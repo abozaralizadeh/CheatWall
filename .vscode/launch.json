@@ -1,0 +1,54 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Backend: server (fake AI)",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/server.ts",
+      "cwd": "${workspaceFolder}",
+      "runtimeArgs": ["--disable-warning=ExperimentalWarning"],
+      "env": { "PROVIDER": "fake", "PORT": "3000" },
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"],
+      "serverReadyAction": {
+        "pattern": "CheatWall listening",
+        "uriFormat": "http://127.0.0.1:3000",
+        "action": "debugWithChrome",
+        "webRoot": "${workspaceFolder}/public"
+      }
+    },
+    {
+      "name": "Frontend: Chrome on running server",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://127.0.0.1:3000",
+      "webRoot": "${workspaceFolder}/public"
+    },
+    {
+      "name": "Tests: current file",
+      "type": "node",
+      "request": "launch",
+      "runtimeArgs": ["--disable-warning=ExperimentalWarning", "--test", "${file}"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Poster CLI: SQL",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/make-poster.ts",
+      "args": ["SQL", "--out", "out"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Full stack: backend + browser",
+      "configurations": ["Backend: server (fake AI)"],
+      "stopAll": true,
+      "presentation": { "order": 1 }
+    }
+  ]
+}

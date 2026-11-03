@@ -1,0 +1,9 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    { "label": "typecheck", "type": "shell", "command": "npm run typecheck", "problemMatcher": "$tsc", "group": "build" },
+    { "label": "test (all)", "type": "shell", "command": "npm test", "group": { "kind": "test", "isDefault": true }, "problemMatcher": [] },
+    { "label": "dev server (auto restart)", "type": "shell", "command": "npm run dev", "isBackground": true, "problemMatcher": [] },
+    { "label": "phase 1 batch (ten topics)", "type": "shell", "command": "npm run phase1", "problemMatcher": [] }
+  ]
+}

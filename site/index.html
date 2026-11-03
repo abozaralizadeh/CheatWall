@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CheatWall</title>
+<meta name="description" content="CheatWall uses AI to make big, print-ready cheat sheet posters for any topic you study.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+:root{--bg:#f7f4ee;--ink:#1c2433;--muted:#4a5568;--card:#fffdf8;--rule:#d9cfbb;--brand:#1f3a5f;--brand-ink:#fff;--accent:#c2410c;--focus:#1f6fb2;--code:#1c2433;--code-ink:#e8edf7}
+@media (prefers-color-scheme:dark){:root{--bg:#0e1526;--ink:#e8edf7;--muted:#a9b4c9;--card:#17213a;--rule:#2b3a5c;--brand:#5cc8ff;--brand-ink:#0a1020;--accent:#ffb454;--focus:#5cc8ff;--code:#0a1020;--code-ink:#e8edf7}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+a{color:var(--brand)}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.wrap{max-width:60rem;margin:0 auto;padding:0 16px}
+header{padding:14px 0;border-bottom:1px solid var(--rule)}
+header .wrap{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.logo{font-weight:800;font-size:1.25rem;color:var(--ink);text-decoration:none}
+nav a{margin-left:16px}
+h1{font-size:clamp(1.9rem,5vw,3rem);line-height:1.1;margin:40px 0 .4em;letter-spacing:-.02em}
+h2{font-size:1.45rem;margin:2.2em 0 .5em}
+.lead{font-size:1.2rem;color:var(--muted);max-width:40rem}
+.note{background:var(--card);border:1px solid var(--rule);border-left:4px solid var(--accent);border-radius:8px;padding:10px 14px;max-width:44rem}
+.shots{display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));margin:18px 0}
+figure{margin:0}
+figure img{width:100%;height:auto;display:block;border:1px solid var(--rule);border-radius:10px;background:#fff}
+figcaption{font-size:.9rem;color:var(--muted);margin-top:6px}
+.hero{display:grid;gap:28px;align-items:start}
+@media (min-width:820px){.hero{grid-template-columns:1.1fr .9fr}}
+pre{background:var(--code);color:var(--code-ink);padding:14px 16px;border-radius:10px;overflow-x:auto;font:.92rem/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.92em}
+table{border-collapse:collapse;width:100%;background:var(--card)}
+th,td{border:1px solid var(--rule);padding:8px 10px;text-align:left;vertical-align:top}
+.tablewrap{overflow-x:auto}
+.btn{display:inline-block;padding:11px 20px;border-radius:8px;background:var(--brand);color:var(--brand-ink);font-weight:650;text-decoration:none;margin:4px 8px 4px 0}
+.btn.ghost{background:transparent;color:var(--brand);border:2px solid var(--brand);padding:9px 18px}
+footer{border-top:1px solid var(--rule);margin-top:56px;padding:20px 0 40px;color:var(--muted);font-size:.95rem}
+</style>
+</head>
+<body>
+<header><div class="wrap"><a class="logo" href="#top">CheatWall</a><nav aria-label="Main"><a href="#install">Install</a><a href="#how">How it works</a></nav></div></header>
+<main id="top"><div class="wrap">
+
+<div class="hero">
+<div>
+<h1>Big, beautiful cheat sheet posters for anything you study</h1>
+<p class="lead">Type a topic. An AI model writes the cheat sheet, and our own templates lay it out as an A2 poster you can print and hang on your wall.</p>
+<p><a class="btn" href="#install">Quick install</a><a class="btn ghost" href="#how">How it works</a></p>
+<p class="note">CheatWall is a working name, and the project is still early. The AI step is only tested with a local fake so far, so real AI quality is not measured yet.</p>
+</div>
+<figure><img src="img/poster-full.png" alt="A one-page Spanish verbs cheat sheet poster with tables, steps and lists" width="2382" height="3369"><figcaption>A poster made by the local sample provider (Spanish verbs).</figcaption></figure>
+</div>
+
+<h2>What you get</h2>
+<ul>
+<li>One print-ready A2 portrait PDF with real text, and a PNG preview.</li>
+<li>Three colour themes. Switching theme redraws the poster with no new AI call.</li>
+<li>Tables, steps, definitions, formulas (KaTeX) and code blocks, all fitted to one page.</li>
+<li>No accounts. Each poster has a private link, kept for 30 days by default.</li>
+<li>A per-person daily limit and a daily spend cap, so a free site cannot run up a bill.</li>
+<li>Every poster says it was made with AI and should be checked.</li>
+</ul>
+
+<h2>Screenshots</h2>
+<p>These come from the real app running locally with the sample provider.</p>
+<div class="shots">
+<figure><img src="img/home.png" alt="The home page with a topic box and example posters" loading="lazy"><figcaption>Home page</figcaption></figure>
+<figure><img src="img/poster-paper.png" alt="The poster page with the Paper theme, theme buttons and download buttons" loading="lazy"><figcaption>Poster page, Paper theme</figcaption></figure>
+<figure><img src="img/poster-midnight.png" alt="The same poster in the dark Midnight theme" loading="lazy"><figcaption>Same poster, Midnight theme</figcaption></figure>
+<figure><img src="img/poster-phone.png" alt="The poster page on a phone-sized screen" loading="lazy"><figcaption>On a phone</figcaption></figure>
+</div>
+
+<h2 id="how">How it works</h2>
+<ol>
+<li>You send a topic, and optionally a level (beginner, student or advanced).</li>
+<li>The server checks the input, your daily limit and the spend cap.</li>
+<li>A background job checks the topic, writes the poster as structured data, and reviews it in a second pass.</li>
+<li>Our templates draw the poster. A headless Chrome measures it, finds the biggest text size that fits one page, and exports the PDF and PNG.</li>
+</ol>
+<p>The AI only writes data. An image model never draws words, so every letter is sharp and prints at any size. Topics and AI output are treated as untrusted: everything is escaped, and the poster is rendered in a browser with no network.</p>
+
+<h2 id="install">Quick install</h2>
+<p>You need Node 24 or newer and a Chrome or Chromium on the same machine (found automatically, or set <code>CHROME_PATH</code>).</p>
+<pre><code>git clone &lt;this repository&gt;
+cd cheatwall
+npm install
+cp .env.example .env
+npm start</code></pre>
+<p>Open <code>http://127.0.0.1:3000</code>. By default it uses the local sample provider, which needs no key and costs nothing. It has handwritten posters for SQL, Spanish verbs and organic chemistry, and a labelled placeholder for any other topic.</p>
+
+<h3>Use a real AI model</h3>
+<p>In <code>.env</code> set <code>PROVIDER=anthropic</code> and <code>ANTHROPIC_API_KEY</code> to your own key. The Anthropic provider is written and tested against a mocked client only, so treat the first real run with care and keep the spend cap low.</p>
+
+<h3>Run the tests</h3>
+<pre><code>npm test            # includes tests in a real browser, a few minutes
+npm run typecheck</code></pre>
+
+<h3>On a Linux VM</h3>
+<pre><code>sudo ./setup_service.sh
+journalctl -u cheatwall.service -f</code></pre>
+<p>The first run installs everything and starts a systemd service. Running it again updates and restarts. Set <code>CHEATWALL_DOMAIN</code> to also set up Caddy for HTTPS. The script has not been run on a real VM yet, so read it before you use it.</p>
+
+<h2>Is there an online demo?</h2>
+<p>No. CheatWall is a server app: it needs Node, a database and a real Chrome to draw the PDF, so it cannot run as a static page. This page is only an introduction. The screenshots above are of the real app.</p>
+
+<h2>Settings</h2>
+<div class="tablewrap"><table>
+<thead><tr><th>Setting</th><th>Default</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>PROVIDER</code></td><td><code>fake</code></td><td><code>fake</code> or <code>anthropic</code></td></tr>
+<tr><td><code>POSTERS_PER_VISITOR_PER_DAY</code></td><td>3</td><td>Posters one person can make a day</td></tr>
+<tr><td><code>DAILY_CAP_CENTS</code></td><td>500</td><td>Daily AI spend cap, checked before every AI call</td></tr>
+<tr><td><code>RETENTION_DAYS</code></td><td>30</td><td>How long a poster is kept</td></tr>
+<tr><td><code>DEFAULT_THEME</code></td><td><code>paper</code></td><td><code>paper</code>, <code>midnight</code> or <code>sunrise</code></td></tr>
+</tbody></table></div>
+<p>Every setting is listed in <code>.env.example</code>.</p>
+
+<h2>Contributing</h2>
+<p>The project is not open source yet, and the licence is still to be decided. When it is, issues and pull requests will be welcome. Run <code>npm test</code> and <code>npm run typecheck</code> before sending a change, and never commit real keys.</p>
+
+</div></main>
+<footer><div class="wrap">CheatWall is a working name. Posters are made with AI and can contain mistakes.</div></footer>
+</body>
+</html>

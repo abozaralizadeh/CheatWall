@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CheatWall: cheat sheet posters for any topic</title>
+<link rel="icon" href="/assets/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="/assets/site.css">
+</head><body>
+<header class="site"><div class="wrap"><a class="logo" href="/">CheatWall</a><nav aria-label="Main"><a href="/about">About</a></nav></div></header>
+<main><div class="wrap">
+<h1>Big, beautiful cheat sheet posters for anything you study</h1>
+<p class="lead">Type a topic. AI writes a cheat sheet and lays it out as a poster you can print big and hang on your wall.</p>
+<form class="make" id="make" novalidate>
+  <div class="row">
+    <div><label for="topic">What are you studying?</label><input type="text" id="topic" name="topic" maxlength="120" autocomplete="off" required aria-describedby="hint err" placeholder="For example: SQL joins"></div>
+    <div><label for="level">Level (optional)</label><select id="level" name="level"><option value="">Any</option><option value="beginner">Beginner</option><option value="student">Student</option><option value="advanced">Advanced</option></select></div>
+  </div>
+  <p class="hint" id="hint">Takes a minute or two. Free, no account. Posters are kept for 30 days.</p>
+  <p class="error" id="err" role="alert"></p>
+  <div><button type="submit" id="go">Make my poster</button></div>
+</form>
+<h2>A few examples</h2>
+<div class="samples">
+  <figure><img src="/assets/samples/sql.png" alt="Sample poster: SQL cheat sheet with code blocks and join tables" width="476" height="673"><figcaption>SQL, Paper theme</figcaption></figure>
+  <figure><img src="/assets/samples/spanish.png" alt="Sample poster: Spanish verbs with conjugation tables" width="476" height="673"><figcaption>Spanish verbs, Midnight theme</figcaption></figure>
+  <figure><img src="/assets/samples/chemistry.png" alt="Sample poster: organic chemistry with functional groups and formulas" width="476" height="673"><figcaption>Organic chemistry, Sunrise theme</figcaption></figure>
+</div>
+<p class="hint">Examples are local test posters, not real AI output.</p>
+</div></main>
+<footer class="site"><div class="wrap"><a href="/about">About</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><p>CheatWall is a working name. Posters are made with AI and can contain mistakes.</p></div></footer>
+<script type="module" src="/assets/home.js"></script></body></html>
