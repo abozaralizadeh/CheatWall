@@ -1,0 +1,23 @@
+{
+  "name": "tour",
+  "url": "http://127.0.0.1:3101/",
+  "viewport": "desktop",
+  "intro": { "title": "CheatWall demo", "subtitle": "Real app, sample text from a local fake AI", "duration": 2600 },
+  "steps": [
+    { "caption": "Type any topic you study", "type": "SQL", "into": "#topic" },
+    { "select": "Student", "in": "#level" },
+    { "click": "#go", "mark": "made", "after": 800 },
+    { "caption": "The AI writes. Our templates lay it out.", "waitFor": "progress", "cut": false, "duration": 1800 },
+    { "waitFor": "img.preview", "cut": true, "timeout": 120000 },
+    { "caption": "A print-ready A2 poster", "zoom": "img.preview", "hold": 2400, "mark": "ready" },
+    { "caption": "Switch colours with no new AI call", "click": "button:has-text('Midnight')", "after": 1800, "mark": "midnight" },
+    { "waitFor": "button[aria-checked='true']:has-text('Midnight')", "cut": true },
+    { "zoom": "img.preview", "hold": 2200 },
+    { "caption": "Download the PDF or PNG", "highlight": "a:has-text('Download PDF')", "duration": 2000, "mark": "download" }
+  ],
+  "outro": { "title": "CheatWall", "subtitle": "github.com/abozaralizadeh/CheatWall", "duration": 2400 },
+  "exports": [
+    { "file": "tour.mp4" },
+    { "file": "tour.gif", "width": 800, "fps": 10 }
+  ]
+}

@@ -39,18 +39,22 @@ footer{border-top:1px solid var(--rule);margin-top:56px;padding:20px 0 40px;colo
 </style>
 </head>
 <body>
-<header><div class="wrap"><a class="logo" href="#top">CheatWall</a><nav aria-label="Main"><a href="#install">Install</a><a href="#how">How it works</a></nav></div></header>
+<header><div class="wrap"><a class="logo" href="#top">CheatWall</a><nav aria-label="Main"><a href="#demo">Demo</a><a href="#install">Install</a><a href="https://github.com/abozaralizadeh/CheatWall">GitHub</a></nav></div></header>
 <main id="top"><div class="wrap">
 
 <div class="hero">
 <div>
 <h1>Big, beautiful cheat sheet posters for anything you study</h1>
 <p class="lead">Type a topic. An AI model writes the cheat sheet, and our own templates lay it out as an A2 poster you can print and hang on your wall.</p>
-<p><a class="btn" href="#install">Quick install</a><a class="btn ghost" href="#how">How it works</a></p>
-<p class="note">CheatWall is a working name, and the project is still early. The AI step is only tested with a local fake so far, so real AI quality is not measured yet.</p>
+<p><a class="btn" href="#install">Quick install</a><a class="btn ghost" href="https://github.com/abozaralizadeh/CheatWall">View on GitHub</a></p>
+<p class="note">Source available, free for non-commercial use (PolyForm Noncommercial 1.0.0). CheatWall is a working name, and the project is still early. The AI step is only tested with a local fake so far, so real AI quality is not measured yet.</p>
 </div>
 <figure><img src="img/poster-full.png" alt="A one-page Spanish verbs cheat sheet poster with tables, steps and lists" width="2382" height="3369"><figcaption>A poster made by the local sample provider (Spanish verbs).</figcaption></figure>
 </div>
+
+<h2 id="demo">Demo</h2>
+<p>A recording of the real app. The poster text comes from the local fake AI provider, not a real model.</p>
+<video controls preload="metadata" poster="img/demo-poster.jpg" width="1920" height="1080" style="width:100%;height:auto;border:1px solid var(--rule);border-radius:10px" aria-label="Demo: type a topic, get a poster, switch colours, download"><source src="img/demo.mp4" type="video/mp4">Your browser can't play this video. The <a href="img/demo.mp4">MP4 is here</a>.</video>
 
 <h2>What you get</h2>
 <ul>
@@ -116,10 +120,13 @@ journalctl -u cheatwall.service -f</code></pre>
 </tbody></table></div>
 <p>Every setting is listed in <code>.env.example</code>.</p>
 
+<h2>License</h2>
+<p>Source available, free for non-commercial use under the <a href="https://github.com/abozaralizadeh/CheatWall/blob/main/LICENSE">PolyForm Noncommercial License 1.0.0</a>. Commercial use needs written permission: ask by <a href="https://github.com/abozaralizadeh/CheatWall/issues">opening a GitHub issue</a>. This is not an open source licence, because it does not allow commercial use.</p>
+
 <h2>Contributing</h2>
-<p>The project is not open source yet, and the licence is still to be decided. When it is, issues and pull requests will be welcome. Run <code>npm test</code> and <code>npm run typecheck</code> before sending a change, and never commit real keys.</p>
+<p>Issues and pull requests are welcome. Run <code>npm test</code> and <code>npm run typecheck</code> before sending a change, and never commit real keys. Contributions are accepted only if you agree that Abozar Alizadeh may relicense them, commercial use included. See <a href="https://github.com/abozaralizadeh/CheatWall/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a>.</p>
 
 </div></main>
-<footer><div class="wrap">CheatWall is a working name. Posters are made with AI and can contain mistakes.</div></footer>
+<footer><div class="wrap">CheatWall is a working name. Posters are made with AI and can contain mistakes. Source available under PolyForm Noncommercial 1.0.0. <a href="https://github.com/abozaralizadeh/CheatWall">GitHub</a></div></footer>
 </body>
 </html>

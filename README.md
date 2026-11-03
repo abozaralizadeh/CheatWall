@@ -2,6 +2,14 @@
 
 CheatWall uses AI to make big, print-ready cheat sheet posters for any topic you study. You type a topic, and you get an A2 poster as a PDF and a PNG.
 
+![Demo: type a topic, get a poster, switch colours, download](docs/demo.gif)
+
+*Demo of the real app. The poster text comes from the local fake AI provider, not a real model.*
+
+Intro page and install guide: https://abozaralizadeh.github.io/CheatWall/
+
+Source available, free for non-commercial use (PolyForm Noncommercial 1.0.0). See [License](#license).
+
 "CheatWall" is a working name.
 
 ## Status
@@ -22,6 +30,8 @@ The AI only writes data. An image model never draws words. Topics and AI output 
 You need Node 24 or newer and a Chrome or Chromium (found automatically, or set `CHROME_PATH`).
 
 ```bash
+git clone https://github.com/abozaralizadeh/CheatWall.git
+cd CheatWall
 npm install
 cp .env.example .env
 npm start
@@ -73,14 +83,17 @@ A rotating log file (10 MB x 5) is kept in `/var/lib/cheatwall/logs/`. Secrets l
 - [docs/DESIGN.md](docs/DESIGN.md): architecture and the reason for each decision
 - [docs/LOGICAL-FLOW.md](docs/LOGICAL-FLOW.md): the main flows
 - [docs/OPEN-WORK.md](docs/OPEN-WORK.md): known issues and what is left
+- [demos/README.md](demos/README.md): how the demo was recorded
 - [docs/PHASE1-RESULTS.md](docs/PHASE1-RESULTS.md): the ten-topic layout test with the fake provider
 
 Code layout: `src/` (server, jobs, store, limits, `ai/`, `render/`), `public/` (the site), `scripts/`, `tests/`. Node runs the TypeScript directly, so there is no build step. Don't use enums or `constructor(private x)` parameter properties, because type stripping doesn't support them.
 
 ## Contributing
 
-Open an issue before a big change. Run `npm test` and `npm run typecheck` before sending anything, keep the AI provider behind its small module in `src/ai/`, and never commit real keys or a `.env` file. Docs are plain and short, with no marketing words.
+See [CONTRIBUTING.md](CONTRIBUTING.md). Short version: open an issue before a big change, run `npm test` and `npm run typecheck`, never commit real keys, and know that contributions are accepted only if you agree that Abozar Alizadeh may relicense them, commercial use included.
 
 ## License
 
-To be decided. Until a licence file is added, all rights are reserved.
+Source available, free for non-commercial use under the [PolyForm Noncommercial License 1.0.0](LICENSE). You can use, study and change it for non-commercial purposes. Commercial use needs written permission: ask by opening a GitHub issue. This is not an open source licence, because it does not allow commercial use.
+
+Third-party packages keep their own licences, listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

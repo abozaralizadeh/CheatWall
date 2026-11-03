@@ -13,3 +13,5 @@ out/
 dist/
 build/
 .next/
+demos/out/
+demos/auth/
