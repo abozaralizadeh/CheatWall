@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,600,50,1&family=Instrument+Sans:wght@500&family=JetBrains+Mono:wght@500&display=block">
+<style>
+  html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; }
+  body { background-color: #f3ede2; background-image: radial-gradient(rgba(21,23,28,.1) 1.6px, transparent 1.8px); background-size: 28px 28px; font-family: "Instrument Sans", sans-serif; color: #15171c; position: relative; }
+  .text { position: absolute; left: 72px; top: 92px; width: 640px; }
+  .eyebrow { font: 500 20px/1 "JetBrains Mono", monospace; letter-spacing: .14em; text-transform: uppercase; color: #d9381e; margin: 0 0 26px; display: flex; align-items: center; gap: 14px; }
+  .eyebrow img { width: 44px; height: 44px; }
+  h1 { font: 600 86px/0.98 "Fraunces", serif; letter-spacing: -0.025em; margin: 0; font-variation-settings: "SOFT" 50, "WONK" 1; }
+  .pen { position: relative; white-space: nowrap; }
+  .pen svg { position: absolute; left: -2%; bottom: -14px; width: 104%; height: 30px; overflow: visible; }
+  .pen path { fill: none; stroke: #d9381e; stroke-width: 7; stroke-linecap: round; }
+  p { font-size: 27px; line-height: 1.4; color: #4b4f58; margin: 34px 0 0; width: 560px; }
+  .url { position: absolute; left: 72px; bottom: 56px; font: 500 20px/1 "JetBrains Mono", monospace; color: #15171c; }
+  .poster { position: absolute; right: 70px; top: 54px; width: 360px; transform: rotate(3deg); filter: drop-shadow(0 26px 30px rgba(21,23,28,.3)); }
+  .poster img { width: 100%; display: block; border-radius: 4px; }
+  .poster::before { content: ""; position: absolute; top: -12px; left: 50%; width: 30px; height: 30px; margin-left: -15px; border-radius: 50%; background: radial-gradient(circle at 35% 32%, #ff8a70 0 22%, #d9381e 48%, #8f1f0d 100%); box-shadow: 0 4px 5px rgba(0,0,0,.35); }
+</style>
+</head>
+<body>
+  <div class="text">
+    <p class="eyebrow"><img src="../site/favicon.svg" alt="">CheatWall</p>
+    <h1>Any topic. One poster for <span class="pen">your wall<svg viewBox="0 0 300 24" preserveAspectRatio="none"><path d="M4 16 C 60 6, 120 20, 180 11 S 270 8, 296 14"/></svg></span>.</h1>
+    <p>Type what you're studying. Get a print-ready A2 cheat sheet poster.</p>
+  </div>
+  <div class="url">github.com/abozaralizadeh/CheatWall</div>
+  <div class="poster"><img src="../site/img/poster-chem-sunrise.webp" alt=""></div>
+</body>
+</html>

@@ -4,129 +4,308 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>CheatWall</title>
-<meta name="description" content="CheatWall uses AI to make big, print-ready cheat sheet posters for any topic you study.">
-<link rel="icon" href="icon.svg" type="image/svg+xml">
-<style>
-:root{--bg:#f7f4ee;--ink:#1c2433;--muted:#4a5568;--card:#fffdf8;--rule:#d9cfbb;--brand:#1f3a5f;--brand-ink:#fff;--accent:#c2410c;--focus:#1f6fb2;--code:#1c2433;--code-ink:#e8edf7}
-@media (prefers-color-scheme:dark){:root{--bg:#0e1526;--ink:#e8edf7;--muted:#a9b4c9;--card:#17213a;--rule:#2b3a5c;--brand:#5cc8ff;--brand-ink:#0a1020;--accent:#ffb454;--focus:#5cc8ff;--code:#0a1020;--code-ink:#e8edf7}}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-a{color:var(--brand)}
-:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
-.wrap{max-width:60rem;margin:0 auto;padding:0 16px}
-header{padding:14px 0;border-bottom:1px solid var(--rule)}
-header .wrap{display:flex;justify-content:space-between;align-items:center;gap:12px}
-.logo{font-weight:800;font-size:1.25rem;color:var(--ink);text-decoration:none}
-nav a{margin-left:16px}
-h1{font-size:clamp(1.9rem,5vw,3rem);line-height:1.1;margin:40px 0 .4em;letter-spacing:-.02em}
-h2{font-size:1.45rem;margin:2.2em 0 .5em}
-.lead{font-size:1.2rem;color:var(--muted);max-width:40rem}
-.note{background:var(--card);border:1px solid var(--rule);border-left:4px solid var(--accent);border-radius:8px;padding:10px 14px;max-width:44rem}
-.shots{display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));margin:18px 0}
-figure{margin:0}
-figure img{width:100%;height:auto;display:block;border:1px solid var(--rule);border-radius:10px;background:#fff}
-figcaption{font-size:.9rem;color:var(--muted);margin-top:6px}
-.hero{display:grid;gap:28px;align-items:start}
-@media (min-width:820px){.hero{grid-template-columns:1.1fr .9fr}}
-pre{background:var(--code);color:var(--code-ink);padding:14px 16px;border-radius:10px;overflow-x:auto;font:.92rem/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
-code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.92em}
-table{border-collapse:collapse;width:100%;background:var(--card)}
-th,td{border:1px solid var(--rule);padding:8px 10px;text-align:left;vertical-align:top}
-.tablewrap{overflow-x:auto}
-.btn{display:inline-block;padding:11px 20px;border-radius:8px;background:var(--brand);color:var(--brand-ink);font-weight:650;text-decoration:none;margin:4px 8px 4px 0}
-.btn.ghost{background:transparent;color:var(--brand);border:2px solid var(--brand);padding:9px 18px}
-footer{border-top:1px solid var(--rule);margin-top:56px;padding:20px 0 40px;color:var(--muted);font-size:.95rem}
-</style>
+<meta name="description" content="Type what you're studying and get a big, print-ready A2 cheat sheet poster. Source available, free for non-commercial use.">
+<meta name="theme-color" content="#f3ede2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#111317" media="(prefers-color-scheme: dark)">
+<link rel="canonical" href="https://abozaralizadeh.github.io/CheatWall/">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="CheatWall">
+<meta property="og:title" content="CheatWall: any topic, one poster for your wall">
+<meta property="og:description" content="Type what you're studying. CheatWall writes the cheat sheet and lays it out as a print-ready A2 poster.">
+<meta property="og:url" content="https://abozaralizadeh.github.io/CheatWall/">
+<meta property="og:image" content="https://abozaralizadeh.github.io/CheatWall/img/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="CheatWall: a cheat sheet poster pinned to a wall, next to the line Any topic, one poster for your wall">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="CheatWall: any topic, one poster for your wall">
+<meta name="twitter:description" content="Type what you're studying. CheatWall writes the cheat sheet and lays it out as a print-ready A2 poster.">
+<meta name="twitter:image" content="https://abozaralizadeh.github.io/CheatWall/img/og.png">
+<script>try{var t=localStorage.getItem('cw-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,500..700,0..100,0..1&family=Instrument+Sans:wght@400..600&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="style.css">
+<script src="main.js" defer></script>
 </head>
 <body>
-<header><div class="wrap"><a class="logo" href="#top">CheatWall</a><nav aria-label="Main"><a href="#demo">Demo</a><a href="#install">Install</a><a href="https://github.com/abozaralizadeh/CheatWall">GitHub</a></nav></div></header>
-<main id="top"><div class="wrap">
+<a class="skip" href="#main">Skip to content</a>
 
-<div class="hero">
-<div>
-<h1>Big, beautiful cheat sheet posters for anything you study</h1>
-<p class="lead">Type a topic. An AI model writes the cheat sheet, and our own templates lay it out as an A2 poster you can print and hang on your wall.</p>
-<p><a class="btn" href="#install">Quick install</a><a class="btn ghost" href="https://github.com/abozaralizadeh/CheatWall">View on GitHub</a></p>
-<p class="note">Source available, free for non-commercial use (PolyForm Noncommercial 1.0.0). CheatWall is a working name, and the project is still early. The AI step is only tested with a local fake so far, so real AI quality is not measured yet.</p>
-</div>
-<figure><img src="img/poster-full.png" alt="A one-page Spanish verbs cheat sheet poster with tables, steps and lists" width="2382" height="3369"><figcaption>A poster made by the local sample provider (Spanish verbs).</figcaption></figure>
-</div>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="CheatWall, back to top"><img src="favicon.svg" alt="" width="30" height="30">CheatWall</a>
+    <nav class="nav" aria-label="Main">
+      <a class="hide-sm" href="#how">How it works</a>
+      <a class="hide-sm" href="#features">Features</a>
+      <a class="hide-sm" href="#install">Install</a>
+      <a class="hide-sm" href="#faq">FAQ</a>
+      <a class="gh" href="https://github.com/abozaralizadeh/CheatWall"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#gh-mark"/></svg>GitHub</a>
+      <button class="mode" type="button" aria-label="Switch colour mode">
+        <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6"/></svg>
+        <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 14.6A8.6 8.6 0 1 1 9.4 3.5a7 7 0 0 0 11.1 11.1Z"/></svg>
+      </button>
+    </nav>
+  </div>
+</header>
 
-<h2 id="demo">Demo</h2>
-<p>A recording of the real app. The poster text comes from the local fake AI provider, not a real model.</p>
-<video controls preload="metadata" poster="img/demo-poster.jpg" width="1920" height="1080" style="width:100%;height:auto;border:1px solid var(--rule);border-radius:10px" aria-label="Demo: type a topic, get a poster, switch colours, download"><source src="img/demo.mp4" type="video/mp4">Your browser can't play this video. The <a href="img/demo.mp4">MP4 is here</a>.</video>
+<main id="main">
+<div id="top"></div>
 
-<h2>What you get</h2>
-<ul>
-<li>One print-ready A2 portrait PDF with real text, and a PNG preview.</li>
-<li>Three colour themes. Switching theme redraws the poster with no new AI call.</li>
-<li>Tables, steps, definitions, formulas (KaTeX) and code blocks, all fitted to one page.</li>
-<li>No accounts. Each poster has a private link, kept for 30 days by default.</li>
-<li>A per-person daily limit and a daily spend cap, so a free site cannot run up a bill.</li>
-<li>Every poster says it was made with AI and should be checked.</li>
-</ul>
+<section class="hero" aria-labelledby="hero-title">
+  <div class="wrap">
+    <div class="hero-grid">
+      <div>
+        <p class="eyebrow">Cheat sheet posters, made for you</p>
+        <h1 id="hero-title">Any topic. One poster for <span class="pen">your wall<svg viewBox="0 0 300 24" preserveAspectRatio="none" aria-hidden="true"><path d="M4 16 C 60 6, 120 20, 180 11 S 270 8, 296 14"/></svg></span>.</h1>
+        <p class="lede">Type what you're studying. CheatWall writes the cheat sheet, checks it, and lays it out as a print-ready A2 poster.</p>
+        <div class="cta">
+          <a class="btn primary" href="https://github.com/abozaralizadeh/CheatWall"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#gh-mark"/></svg>View on GitHub</a>
+          <a class="btn ghost" href="#install"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg>Install</a>
+        </div>
+        <p class="fine">Runs on your own machine. Node 24 and Chrome, no account.</p>
+      </div>
+      <div>
+        <div class="frame">
+          <div class="chrome" aria-hidden="true"><i></i><i></i><i></i><span>127.0.0.1:3000</span></div>
+          <div class="screen">
+            <video muted loop playsinline preload="none" poster="img/hero-poster.webp" width="1280" height="720" aria-label="Recording of CheatWall: typing a topic, getting a poster, switching to the Midnight theme and downloading">
+              <source data-src="img/hero.mp4" type="video/mp4">
+            </video>
+          </div>
+        </div>
+        <p class="frame-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5v.5"/></svg><span>A real recording of the app. The poster text comes from the built-in sample provider, not a live AI model.</span></p>
+      </div>
+    </div>
 
-<h2>Screenshots</h2>
-<p>These come from the real app running locally with the sample provider.</p>
-<div class="shots">
-<figure><img src="img/home.png" alt="The home page with a topic box and example posters" loading="lazy"><figcaption>Home page</figcaption></figure>
-<figure><img src="img/poster-paper.png" alt="The poster page with the Paper theme, theme buttons and download buttons" loading="lazy"><figcaption>Poster page, Paper theme</figcaption></figure>
-<figure><img src="img/poster-midnight.png" alt="The same poster in the dark Midnight theme" loading="lazy"><figcaption>Same poster, Midnight theme</figcaption></figure>
-<figure><img src="img/poster-phone.png" alt="The poster page on a phone-sized screen" loading="lazy"><figcaption>On a phone</figcaption></figure>
-</div>
+    <div class="facts reveal" role="list">
+      <div role="listitem"><b>A2</b><span>420 x 594 mm, portrait</span></div>
+      <div role="listitem"><b>PDF + PNG</b><span>Real vector text, prints sharp</span></div>
+      <div role="listitem"><b>3 themes</b><span>Switch with no new AI call</span></div>
+      <div role="listitem"><b>0 accounts</b><span>A private link per poster</span></div>
+    </div>
+  </div>
+</section>
 
-<h2 id="how">How it works</h2>
-<ol>
-<li>You send a topic, and optionally a level (beginner, student or advanced).</li>
-<li>The server checks the input, your daily limit and the spend cap.</li>
-<li>A background job checks the topic, writes the poster as structured data, and reviews it in a second pass.</li>
-<li>Our templates draw the poster. A headless Chrome measures it, finds the biggest text size that fits one page, and exports the PDF and PNG.</li>
-</ol>
-<p>The AI only writes data. An image model never draws words, so every letter is sharp and prints at any size. Topics and AI output are treated as untrusted: everything is escaped, and the poster is rendered in a browser with no network.</p>
+<section id="how" aria-labelledby="how-title">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <p class="eyebrow">How it works</p>
+      <h2 id="how-title">From a topic to your wall in three steps.</h2>
+    </div>
+    <ol class="steps">
+      <li class="step reveal">
+        <span class="num" aria-hidden="true">1</span>
+        <h3>Type what you're studying</h3>
+        <p>A topic and, if you like, a level. That's the whole form.</p>
+        <div class="shot"><picture><source srcset="img/step-1-dark.webp" media="(prefers-color-scheme: dark)" data-dark><img src="img/step-1-light.webp" alt="The CheatWall home page with Organic chemistry typed into the topic box and Student picked as the level" width="1200" height="750" loading="lazy" decoding="async"></picture></div>
+      </li>
+      <li class="step reveal">
+        <span class="num" aria-hidden="true">2</span>
+        <h3>It writes, checks and fits</h3>
+        <p>One AI pass writes the content as structured data and a second pass reviews it. Then the layout finds the biggest text that still fits one page.</p>
+        <div class="shot"><picture><source srcset="img/step-2-dark.webp" media="(prefers-color-scheme: dark)" data-dark><img src="img/step-2-light.webp" alt="The progress screen while a poster is being made, showing the current step" width="1200" height="750" loading="lazy" decoding="async"></picture></div>
+      </li>
+      <li class="step reveal">
+        <span class="num" aria-hidden="true">3</span>
+        <h3>Print it big</h3>
+        <p>Download a vector PDF at A2, or a PNG. Try another colour theme first if you like.</p>
+        <div class="shot"><picture><source srcset="img/step-3-dark.webp" media="(prefers-color-scheme: dark)" data-dark><img src="img/step-3-light.webp" alt="The finished poster page with a preview, theme buttons and download buttons" width="1200" height="750" loading="lazy" decoding="async"></picture></div>
+      </li>
+    </ol>
+  </div>
+</section>
 
-<h2 id="install">Quick install</h2>
-<p>You need Node 24 or newer and a Chrome or Chromium on the same machine (found automatically, or set <code>CHROME_PATH</code>).</p>
-<pre><code>git clone https://github.com/abozaralizadeh/CheatWall.git
-cd CheatWall
-npm install
-cp .env.example .env
-npm start</code></pre>
-<p>Open <code>http://127.0.0.1:3000</code>. By default it uses the local sample provider, which needs no key and costs nothing. It has handwritten posters for SQL, Spanish verbs and organic chemistry, and a labelled placeholder for any other topic.</p>
+<section id="wall" aria-labelledby="wall-title">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <p class="eyebrow">On the wall</p>
+      <h2 id="wall-title">Dense enough to study from. Calm enough to hang up.</h2>
+      <p>Every poster is one page, filled edge to edge, with tables, steps, formulas and code where the topic needs them. Hover or tap one to take it off the wall.</p>
+    </div>
+    <div class="wall">
+      <figure class="pin reveal" tabindex="0" role="button" aria-pressed="false" aria-label="SQL poster, Paper theme">
+        <img src="img/poster-sql-paper.webp" alt="SQL cheat sheet poster with query order, joins and aggregate tables in the Paper theme" width="700" height="990" loading="lazy" decoding="async">
+        <figcaption>SQL / Paper</figcaption>
+      </figure>
+      <figure class="pin reveal" tabindex="0" role="button" aria-pressed="false" aria-label="Spanish verbs poster, Midnight theme">
+        <img src="img/poster-spanish-midnight.webp" alt="Spanish verbs cheat sheet poster with conjugation tables in the dark Midnight theme" width="700" height="990" loading="lazy" decoding="async">
+        <figcaption>Spanish verbs / Midnight</figcaption>
+      </figure>
+      <figure class="pin reveal" tabindex="0" role="button" aria-pressed="false" aria-label="Organic chemistry poster, Sunrise theme">
+        <img src="img/poster-chem-sunrise.webp" alt="Organic chemistry cheat sheet poster with functional groups, formulas and reactions in the warm Sunrise theme" width="700" height="990" loading="lazy" decoding="async">
+        <figcaption>Organic chemistry / Sunrise</figcaption>
+      </figure>
+    </div>
+    <p class="wall-note reveal">These come from the built-in sample provider, which has handwritten content for these three topics. Posters from a real AI model will read differently.</p>
+  </div>
+</section>
 
-<h3>Use a real AI model</h3>
-<p>In <code>.env</code> set <code>PROVIDER=anthropic</code> and <code>ANTHROPIC_API_KEY</code> to your own key. The Anthropic provider is written and tested against a mocked client only, so treat the first real run with care and keep the spend cap low.</p>
+<section id="features" aria-labelledby="features-title">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <p class="eyebrow">What you get</p>
+      <h2 id="features-title">Built like a print shop, not a chat window.</h2>
+    </div>
+    <div class="features">
+      <article class="card reveal">
+        <div class="crop"><img src="img/feat-sharp.webp" alt="A close-up of poster text and a table, crisp at large size" width="960" height="540" loading="lazy" decoding="async"></div>
+        <h3>Sharp at any size</h3>
+        <p>The AI writes data and our templates draw the poster, so every word is real text in a vector PDF. No image model guessing at letters.</p>
+      </article>
+      <article class="card reveal">
+        <div class="crop"><img src="img/feat-formulas.webp" alt="Chemistry formulas on a poster, typeset with KaTeX" width="960" height="540" loading="lazy" decoding="async"></div>
+        <h3>Formulas and code</h3>
+        <p>KaTeX sets the maths and chemistry. Code gets a proper monospace block. Both print as cleanly as the headings.</p>
+      </article>
+      <article class="card reveal">
+        <div class="trio" aria-hidden="true">
+          <img src="img/trio-paper.webp" alt="" width="300" height="424" loading="lazy" decoding="async">
+          <img src="img/trio-midnight.webp" alt="" width="300" height="424" loading="lazy" decoding="async">
+          <img src="img/trio-sunrise.webp" alt="" width="300" height="424" loading="lazy" decoding="async">
+        </div>
+        <h3>Three looks, one click</h3>
+        <p>Paper, Midnight and Sunrise. Switching redraws the same content, so it costs nothing and takes seconds.</p>
+      </article>
+      <article class="card reveal">
+        <svg class="icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 27.5a8 8 0 0 0 11.3 0l6.4-6.4a8 8 0 0 0-11.3-11.3l-2.1 2.1"/><path d="M27.5 20.5a8 8 0 0 0-11.3 0l-6.4 6.4a8 8 0 0 0 11.3 11.3l2.1-2.1"/></svg>
+        <h3>No account, just a link</h3>
+        <p>Each poster gets a long random private link. There's nothing to sign up for, and posters are deleted after 30 days.</p>
+      </article>
+      <article class="card reveal">
+        <svg class="icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 34a17 17 0 1 1 34 0"/><path d="M24 34l8-11"/><circle cx="24" cy="34" r="2.6" fill="currentColor"/><path d="M12.5 22.5l2 1.6M24 13v2.6M35.5 22.5l-2 1.6"/></svg>
+        <h3>A spend cap that holds</h3>
+        <p>The daily AI budget is checked before every AI call, and each person gets a few posters a day. A free site can't run up a bill overnight.</p>
+      </article>
+      <article class="card reveal">
+        <svg class="icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M24 5l15 5.5v11.2c0 9.6-6.3 17.1-15 21.3C15.3 38.8 9 31.3 9 21.7V10.5Z"/><path d="M17.5 24.5l4.6 4.6 8.4-9.2"/></svg>
+        <h3>A renderer with no network</h3>
+        <p>Topics and AI output are treated as untrusted. Everything is escaped and drawn in a Chrome that can't reach the internet.</p>
+      </article>
+    </div>
+  </div>
+</section>
 
-<h3>Run the tests</h3>
-<pre><code>npm test            # includes tests in a real browser, a few minutes
-npm run typecheck</code></pre>
+<section id="install" aria-labelledby="install-title">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <p class="eyebrow">Install</p>
+      <h2 id="install-title">Running in two minutes.</h2>
+      <p>No key needed to start. The built-in sample provider lets you try the whole flow for free.</p>
+    </div>
+    <div class="install">
+      <div>
+        <div class="block reveal">
+          <h3>Run it on your machine</h3>
+          <p>Then open <code>http://127.0.0.1:3000</code>.</p>
+          <div class="code">
+<pre><code><span class="p">$ </span>git clone https://github.com/abozaralizadeh/CheatWall.git
+<span class="p">$ </span>cd CheatWall
+<span class="p">$ </span>npm install
+<span class="p">$ </span>cp .env.example .env
+<span class="p">$ </span>npm start</code></pre>
+            <button class="copy" type="button" aria-label="Copy the install commands"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><span>Copy</span></button>
+          </div>
+        </div>
+        <div class="block reveal">
+          <h3>Use a real AI model</h3>
+          <p>Add your own key to <code>.env</code> and keep the daily cap low for the first runs. This provider has only been tested against a mock so far.</p>
+          <div class="code">
+<pre><code>PROVIDER=anthropic
+ANTHROPIC_API_KEY=your-key-here
+DAILY_CAP_CENTS=100</code></pre>
+            <button class="copy" type="button" aria-label="Copy the settings for a real model"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><span>Copy</span></button>
+          </div>
+        </div>
+        <div class="block reveal">
+          <h3>Put it on a Linux VM</h3>
+          <p>The first run installs everything and starts a systemd service. Running it again updates and restarts. Read the script first: it hasn't been tried on a real VM yet.</p>
+          <div class="code">
+<pre><code><span class="p">$ </span>sudo ./setup_service.sh
+<span class="p">$ </span>journalctl -u cheatwall.service -f</code></pre>
+            <button class="copy" type="button" aria-label="Copy the VM commands"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><span>Copy</span></button>
+          </div>
+        </div>
+      </div>
+      <div class="block reveal">
+        <h3>You need</h3>
+        <ul class="needs">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>Node 24 or newer. It runs the TypeScript directly, so there's no build step.</span></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>Chrome or Chromium on the same machine. It's found on its own, or set <code>CHROME_PATH</code>.</span></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>Nothing else. SQLite is built into Node, and the fonts come with the packages.</span></li>
+        </ul>
+        <h3 class="sub">Run the tests</h3>
+        <p>79 tests, some of them in a real browser. A few minutes.</p>
+        <div class="code">
+<pre><code><span class="p">$ </span>npm test
+<span class="p">$ </span>npm run typecheck</code></pre>
+          <button class="copy" type="button" aria-label="Copy the test commands"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><span>Copy</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 
-<h3>On a Linux VM</h3>
-<pre><code>sudo ./setup_service.sh
-journalctl -u cheatwall.service -f</code></pre>
-<p>The first run installs everything and starts a systemd service. Running it again updates and restarts. Set <code>CHEATWALL_DOMAIN</code> to also set up Caddy for HTTPS. The script has not been run on a real VM yet, so read it before you use it.</p>
+<section id="faq" aria-labelledby="faq-title">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <p class="eyebrow">Straight answers</p>
+      <h2 id="faq-title">What it does, and what it doesn't yet.</h2>
+    </div>
+    <div class="faq reveal">
+      <details>
+        <summary>Can I try it online?</summary>
+        <p>Not yet. CheatWall needs a server and a real Chrome to draw the PDF, so it can't run as a static page. The video at the top is the real app running on a laptop.</p>
+      </details>
+      <details>
+        <summary>Which AI does it use?</summary>
+        <p>Out of the box, a built-in sample provider with no key and no cost. It has handwritten posters for SQL, Spanish verbs and organic chemistry, and a clearly labelled placeholder for any other topic. An Anthropic provider is included, but it has only been tested against a mock so far.</p>
+      </details>
+      <details>
+        <summary>Is the content correct?</summary>
+        <p>AI makes mistakes. A second pass reviews each poster, and every poster says it was made with AI. Check anything important, above all for health, law and money, where a poster is study material and never advice.</p>
+      </details>
+      <details>
+        <summary>Is it free?</summary>
+        <p>The code is source available and free for non-commercial use under the PolyForm Noncommercial License 1.0.0. If you want to use it commercially, ask first by opening a GitHub issue.</p>
+      </details>
+      <details>
+        <summary>Can I take a poster into an exam?</summary>
+        <p>That's up to the rules of your exam. CheatWall is a study aid, and the name is a working name.</p>
+      </details>
+      <details>
+        <summary>Why A2?</summary>
+        <p>It's big enough to read from your desk or across the room, and a vector PDF scales cleanly down to A3 or A4 and up to A1.</p>
+      </details>
+    </div>
 
-<h2>Is there an online demo?</h2>
-<p>No. CheatWall is a server app: it needs Node, a database and a real Chrome to draw the PDF, so it cannot run as a static page. This page is only an introduction. The screenshots above are of the real app.</p>
+    <div class="closing reveal">
+      <h2>Pick a topic. Hang it up tonight.</h2>
+      <p>Clone it, run it with the sample provider, and print your first poster. Bring your own key when you want real AI.</p>
+      <div class="cta">
+        <a class="btn primary" href="https://github.com/abozaralizadeh/CheatWall"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#gh-mark"/></svg>View on GitHub</a>
+        <a class="btn ghost" href="#install">Install</a>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
 
-<h2>Settings</h2>
-<div class="tablewrap"><table>
-<thead><tr><th>Setting</th><th>Default</th><th>What it does</th></tr></thead>
-<tbody>
-<tr><td><code>PROVIDER</code></td><td><code>fake</code></td><td><code>fake</code> or <code>anthropic</code></td></tr>
-<tr><td><code>POSTERS_PER_VISITOR_PER_DAY</code></td><td>3</td><td>Posters one person can make a day</td></tr>
-<tr><td><code>DAILY_CAP_CENTS</code></td><td>500</td><td>Daily AI spend cap, checked before every AI call</td></tr>
-<tr><td><code>RETENTION_DAYS</code></td><td>30</td><td>How long a poster is kept</td></tr>
-<tr><td><code>DEFAULT_THEME</code></td><td><code>paper</code></td><td><code>paper</code>, <code>midnight</code> or <code>sunrise</code></td></tr>
-</tbody></table></div>
-<p>Every setting is listed in <code>.env.example</code>.</p>
+<footer>
+  <div class="wrap">
+    <div>
+      <a class="brand" href="#top"><img src="favicon.svg" alt="" width="26" height="26">CheatWall</a>
+      <p class="legal">Source available, free for non-commercial use (<a href="https://github.com/abozaralizadeh/CheatWall/blob/main/LICENSE">PolyForm Noncommercial 1.0.0</a>). Posters are made with AI and can contain mistakes.</p>
+    </div>
+    <div class="links">
+      <a href="https://github.com/abozaralizadeh/CheatWall">GitHub</a>
+      <a href="https://github.com/abozaralizadeh/CheatWall/issues">Issues</a>
+      <span>Made by <a href="https://abozaralizadeh.github.io">Abozar Alizadeh</a></span>
+    </div>
+  </div>
+</footer>
 
-<h2>License</h2>
-<p>Source available, free for non-commercial use under the <a href="https://github.com/abozaralizadeh/CheatWall/blob/main/LICENSE">PolyForm Noncommercial License 1.0.0</a>. Commercial use needs written permission: ask by <a href="https://github.com/abozaralizadeh/CheatWall/issues">opening a GitHub issue</a>. This is not an open source licence, because it does not allow commercial use.</p>
-
-<h2>Contributing</h2>
-<p>Issues and pull requests are welcome. Run <code>npm test</code> and <code>npm run typecheck</code> before sending a change, and never commit real keys. Contributions are accepted only if you agree that Abozar Alizadeh may relicense them, commercial use included. See <a href="https://github.com/abozaralizadeh/CheatWall/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a>.</p>
-
-</div></main>
-<footer><div class="wrap">CheatWall is a working name. Posters are made with AI and can contain mistakes. Source available under PolyForm Noncommercial 1.0.0. <a href="https://github.com/abozaralizadeh/CheatWall">GitHub</a></div></footer>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="gh-mark" viewBox="0 0 24 24"><path fill="currentColor" d="M12 .5a11.5 11.5 0 0 0-3.64 22.4c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.41-2.69 5.38-5.26 5.67.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5Z"/></symbol></svg>
 </body>
 </html>
