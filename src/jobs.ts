@@ -2,6 +2,7 @@ import { costCents, type Config } from './config.ts';
 import { parsePoster, type Level, type PosterContent } from './content.ts';
 import { ProviderRefusal, type TextProvider, type Usage } from './ai/provider.ts';
 import { writePosterFiles } from './files.ts';
+import { dailyCapReached, MSG_FULL } from './limits.ts';
 import type { Logger } from './log.ts';
 import type { PosterRenderer } from './render/renderer.ts';
 import { getTheme } from './render/themes.ts';
@@ -14,7 +15,7 @@ export const SENSITIVE_NOTES = {
 } as const;
 
 export const MSG_FAILED = 'Something went wrong on our side. Try again. This one does not count toward your daily limit.';
-export const MSG_FULL = 'CheatWall is full for today. Come back tomorrow, it resets at midnight UTC.';
+export { MSG_FULL };
 export const MSG_BAD_CONTENT = 'The AI gave us something we could not turn into a poster. Try again. This one does not count toward your daily limit.';
 export const MSG_NO_FIT = 'We could not fit this topic on one poster. Try a narrower topic. This one does not count toward your daily limit.';
 
@@ -28,6 +29,7 @@ export interface JobDeps {
 }
 
 class BadContent extends Error {}
+class CapReached extends Error {}
 
 export class JobRunner {
   private d: JobDeps;
@@ -85,6 +87,11 @@ export class JobRunner {
     await Promise.allSettled([...this.inFlight]);
   }
 
+  // Called right before every AI call, so a job that is already running stops as soon as a daily cap is spent.
+  private guard(): void {
+    if (dailyCapReached(this.d.store, this.d.config, this.now())) throw new CapReached();
+  }
+
   private spend(id: string, u: Usage): void {
     const { config, store } = this.d;
     store.addUsage(id, u.inputTokens, u.outputTokens, costCents(config, u.inputTokens, u.outputTokens), this.now());
@@ -102,14 +109,8 @@ export class JobRunner {
     const level = row.level as Level | null;
     const started = Date.now();
     try {
-      // Stop before spending anything if today's cap is already used up.
-      if (store.dayUsage(this.now()).costCents >= config.dailyCapCents) {
-        store.setStatus(id, 'failed', MSG_FULL);
-        log.warn('daily cap reached, job not started', { id });
-        return;
-      }
-
       store.setStatus(id, 'checking');
+      this.guard();
       const check = await provider.checkTopic(row.topic, level);
       this.spend(id, check.usage);
       if (!check.value.allowed) {
@@ -121,6 +122,7 @@ export class JobRunner {
       store.setStatus(id, 'writing');
       let content: PosterContent | null = null;
       for (let attempt = 0; attempt < 2 && !content; attempt++) {
+        this.guard();
         const w = await provider.writePoster(row.topic, level);
         this.spend(id, w.usage);
         try {
@@ -135,6 +137,7 @@ export class JobRunner {
       }
 
       store.setStatus(id, 'reviewing');
+      this.guard();
       try {
         const r = await provider.reviewPoster(row.topic, level, content);
         this.spend(id, r.usage);
@@ -152,6 +155,7 @@ export class JobRunner {
       const theme = getTheme(row.theme) ?? getTheme(config.defaultTheme)!;
       let result = await renderer.render(content, theme);
       for (let i = 0; i < 2 && !result.fit.fits; i++) {
+        this.guard();
         const s = await provider.shortenPoster(row.topic, content, result.fit.overflow);
         this.spend(id, s.usage);
         content = { ...this.validate(s.value), note: note ?? undefined };
@@ -168,6 +172,11 @@ export class JobRunner {
       store.countPosterMade(this.now());
       log.info('poster ready', { id, ms: Date.now() - started, scale: Number(result.fit.scale.toFixed(2)), fill: Number(result.fit.fill.toFixed(2)), day: dayOf(this.now()) });
     } catch (err) {
+      if (err instanceof CapReached) {
+        store.setStatus(id, 'failed', MSG_FULL);
+        log.warn('daily cap reached, job stopped', { id });
+        return;
+      }
       if (err instanceof ProviderRefusal) {
         store.setStatus(id, 'refused', err.message);
         log.info('provider declined', { id });

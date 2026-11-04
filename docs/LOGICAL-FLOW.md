@@ -5,7 +5,7 @@ These are the main flows of the first version.
 ## 1. Making a poster
 
 1. You type a topic and optionally pick a level.
-2. The server checks the input, your limit and the daily spend cap.
+2. The server checks the input, your limit and the daily caps (money, tokens and AI requests). The worker checks the caps again before every AI call.
 3. It saves a poster record and sends you to the poster's private link straight away.
 4. A background worker does the job while the page shows progress.
 5. When it's ready, the page shows the preview and download buttons.

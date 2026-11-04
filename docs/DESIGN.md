@@ -28,12 +28,12 @@ The worker runs inside the same service as the app and takes jobs from SQLite, t
 | Web app | Plain Node (`node:http`), static HTML and small JS files | Changed from the first plan (Next.js). Fewer dependencies, strict CSP with no inline scripts, nothing to build |
 | Database | SQLite through Node's built-in `node:sqlite` | No extra server, no native module to compile, easy to back up, fine for one VM |
 | Validation | Zod | One definition for the content format, in code and for the AI's output |
-| Text AI | Claude Opus 5.5 (`claude-opus-5-5`) with structured outputs | Strong on accuracy and on returning data in an exact shape. Cheaper models can be compared later |
+| Text AI | Azure OpenAI with a fallback deployment, or Claude Opus 5.5 (`claude-opus-5-5`), both with structured outputs | Strong on accuracy and on returning data in an exact shape. Cheaper models can be compared later |
 | Poster drawing | HTML and CSS templates | Best typography for the effort, and easy to theme |
 | Export | Playwright with Chromium | Vector PDF with real text, plus PNG |
 | Formulas and code | KaTeX for formulas, plain monospace for code | KaTeX renders on the server. Code highlighting (Shiki) is left for later |
 | Fonts | Open licence fonts, stored in the project | No outside requests, safe to embed in PDFs |
-| Web server | Caddy | Automatic HTTPS, simple config |
+| Web server | Caddy on a VM of its own, or an existing nginx on a shared VM | Caddy gives automatic HTTPS with a simple config. On a shared VM the nginx that is already there stays in charge |
 | Hosting | One VM with 2 vCPUs and 4 GB RAM, in the EU | Cheap, and Chromium needs the memory |
 | Running it | systemd, set up by `setup_service.sh` | Same script for first install and updates |
 
@@ -64,7 +64,9 @@ The worker runs inside the same service as the app and takes jobs from SQLite, t
 | --- | --- | --- |
 | `day` | date | Primary key |
 | `posters` | integer | Posters made |
-| `cost_cents` | real | Compared with the daily cap |
+| `cost_cents` | real | Compared with the daily money cap |
+| `tokens` | integer | Input plus output tokens, compared with `DAILY_TOKEN_BUDGET` |
+| `requests` | integer | AI calls, compared with `DAILY_REQUEST_CAP` |
 
 ### Files
 
@@ -169,3 +171,9 @@ Handle heavy traffic, keep posters for good, or guarantee the content is right. 
 | The AI provider returns `unknown` and the pipeline validates | A provider can never skip validation |
 | The sensitive-topic note is added by the pipeline, not by the AI | The wording stays the same whatever the model does |
 | A local fake provider exists | It needs no key and costs nothing. It gives handwritten sample posters, so real AI quality and cost are unmeasured |
+| Azure OpenAI provider, with a fallback deployment | It runs on an Azure account that already exists. If the main deployment is busy, down or missing, the same request goes to the fallback. A refusal or a bad answer never goes to the fallback, so a poster can't quietly cost twice. Plain `fetch`, no new dependency |
+| Prompts live in one shared module | Every provider asks for exactly the same thing, so switching models doesn't change the poster |
+| Three daily caps (money, tokens, AI requests), checked before every AI call | Prices per model are easy to get wrong. Tokens and request counts don't depend on a price table, so the worst day stays bounded even if the price settings are off. A job that's already running stops at its next AI call once a cap is spent |
+| The site can live under a path (`BASE_PATH`) | So it can share a VM and a domain with other sites behind one nginx. The server adds the path to the links in its pages and API answers, and accepts requests with or without the path |
+| `TRUST_PROXY` can name the proxy's address | On a shared VM only the local nginx may tell us the visitor's address. Anyone else sending X-Forwarded-For is ignored |
+| Shared VM mode in `setup_service.sh` | Another site's nginx already owns ports 80 and 443. This mode installs nothing and writes only its own two nginx files, and it rolls them back if `nginx -t` fails |

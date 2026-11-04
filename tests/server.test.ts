@@ -119,6 +119,70 @@ test('forwarded headers are ignored unless TRUST_PROXY is on', async () => {
   } finally { await s.close(); }
 });
 
+test('TRUST_PROXY with an address list trusts forwarded headers only from those addresses', async () => {
+  const local = await startTestServer({ TRUST_PROXY: '127.0.0.1' });
+  try {
+    for (let i = 0; i < 3; i++) await make(local, 'SQL ' + i, { 'X-Forwarded-For': '10.0.0.1' });
+    assert.equal((await make(local, 'SQL', { 'X-Forwarded-For': '10.0.0.2' })).status, 201, 'a local proxy passes the real visitor address on');
+  } finally { await local.close(); }
+  const other = await startTestServer({ TRUST_PROXY: '10.9.9.9' });
+  try {
+    for (let i = 0; i < 3; i++) await make(other, 'SQL ' + i, { 'X-Forwarded-For': `10.0.0.${i}` });
+    assert.equal((await make(other, 'SQL', { 'X-Forwarded-For': '10.0.0.99' })).status, 429, 'a request that is not from the listed proxy cannot set its own address');
+  } finally { await other.close(); }
+});
+
+test('daily token budget and request cap turn new posters away with the polite message', async () => {
+  for (const env of [{ DAILY_TOKEN_BUDGET: '2000' }, { DAILY_REQUEST_CAP: '3' }] as Array<Record<string, string>>) {
+    const s = await startTestServer(env);
+    try {
+      assert.equal((await waitDone(s, (await make(s, 'SQL')).data.id)).status, 'ready');
+      const r = await make(s, 'SQL again');
+      assert.equal(r.status, 429, JSON.stringify(env));
+      assert.equal(r.data.error, 'daily_cap');
+      assert.match(r.data.message, /full for today/);
+    } finally { await s.close(); }
+  }
+});
+
+test('a running job stops at the next AI call once a cap is spent, and never makes that call', async () => {
+  // Check and write are 2 calls. The review would be the 3rd, so a cap of 2 stops the job right before it.
+  const s = await startTestServer({ DAILY_REQUEST_CAP: '2' });
+  try {
+    const d = await waitDone(s, (await make(s, 'SQL')).data.id);
+    assert.equal(d.status, 'failed');
+    assert.match(d.message, /full for today/);
+    assert.equal(s.provider.calls.review, 0, 'the review call was never made');
+    assert.equal(s.store.dayUsage(s.clock.now).requests, 2);
+  } finally { await s.close(); }
+});
+
+test('BASE_PATH: pages, links, API answers and the slash redirect all work under a prefix', async () => {
+  const s = await startTestServer({ BASE_PATH: '/cheatwall/' });
+  try {
+    const html = await (await fetch(s.base + '/cheatwall/')).text();
+    assert.match(html, /<meta name="cw-base" content="\/cheatwall\/">/);
+    assert.ok(!/\b(href|src)="\/(?!cheatwall\/)/.test(html), 'every root link carries the prefix');
+    assert.match(html, /src="\/cheatwall\/assets\/home\.js"/);
+    // The proxy may strip the prefix, so plain paths work too.
+    assert.equal((await fetch(s.base + '/about')).status, 200);
+    assert.equal((await fetch(s.base + '/cheatwall/assets/site.css')).status, 200);
+    const redirect = await fetch(s.base + '/cheatwall', { redirect: 'manual' });
+    assert.equal(redirect.status, 301);
+    assert.equal(redirect.headers.get('location'), '/cheatwall/');
+    const made = await post(s.base, '/cheatwall/api/posters', { topic: 'SQL' });
+    assert.equal(made.status, 201);
+    assert.equal(made.data.url, `/cheatwall/p/${made.data.id}`);
+    await s.app.runner.idle();
+    const p = (await getJson(s.base, `/cheatwall/api/posters/${made.data.id}`)).data;
+    assert.equal(p.status, 'ready');
+    assert.ok(p.downloads.pdf.startsWith(`/cheatwall/api/posters/${made.data.id}/poster.pdf`));
+    assert.equal((await fetch(s.base + p.downloads.png)).status, 200);
+    assert.equal((await getJson(s.base, '/cheatwall/api/posters/not-an-id')).status, 404);
+    assert.equal((await getJson(s.base, '/cheatwall/api/posters/not-an-id')).data.error, 'not_found', 'API errors stay JSON under the prefix');
+  } finally { await s.close(); }
+});
+
 test('daily spend cap: once reached, new posters are turned away', async () => {
   const s = await startTestServer({ DAILY_CAP_CENTS: '2', TRUST_PROXY: 'true' });
   try {

@@ -1,3 +1,6 @@
+// Where the site lives: "/" normally, or something like "/cheatwall/" behind a shared proxy. The server sets the meta tag.
+export const base = document.querySelector('meta[name="cw-base"]')?.getAttribute('content') || '/';
+
 // Small helper. Builds elements with textContent only, so nothing from the server is ever parsed as HTML.
 export function el(tag, props = {}, ...children) {
   const node = document.createElement(tag);

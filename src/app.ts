@@ -77,8 +77,34 @@ export function createApp(deps: AppDeps): App {
   const runner = new JobRunner({ config, store, provider, renderer, log, now: deps.now });
   const themeLocks = new Map<string, Promise<void>>();
 
+  const base = config.basePath;
+  // Links the server hands out (poster page, downloads) carry the base path, so they work behind a path prefix.
+  const href = (p: string) => base + p.replace(/^\//, '');
+
+  // HTML pages use root links like href="/about". Under a prefix they get the base path, and the scripts read it from a meta tag.
+  const htmlCache = new Map<string, Buffer>();
+  function withBase(file: string, data: Buffer): Buffer {
+    if (base === '/') return data;
+    let out = htmlCache.get(file);
+    if (!out) {
+      const text = data.toString('utf8')
+        .replace(/\b(href|src|action)="\/(?!\/)/g, `$1="${base}`)
+        .replace('<head>', `<head><meta name="cw-base" content="${base}">`);
+      out = Buffer.from(text, 'utf8');
+      htmlCache.set(file, out);
+    }
+    return out;
+  }
+
+  function fromTrustedProxy(req: http.IncomingMessage): boolean {
+    if (!config.trustProxy) return false;
+    if (!config.trustedProxies.length) return true;
+    const remote = (req.socket.remoteAddress ?? '').replace(/^::ffff:/, '');
+    return config.trustedProxies.includes(remote) || (remote === '::1' && config.trustedProxies.includes('127.0.0.1'));
+  }
+
   function clientIp(req: http.IncomingMessage): string {
-    if (config.trustProxy) {
+    if (fromTrustedProxy(req)) {
       const xff = req.headers['x-forwarded-for'];
       const last = (Array.isArray(xff) ? xff.join(',') : xff ?? '').split(',').map((s) => s.trim()).filter(Boolean).pop();
       if (last) return last;
@@ -147,8 +173,8 @@ export function createApp(deps: AppDeps): App {
       expiresAt: row.expires_at,
       downloads: ready
         ? {
-            pdf: `/api/posters/${row.id}/poster.pdf?theme=${row.theme}`,
-            png: `/api/posters/${row.id}/poster.png?theme=${row.theme}`,
+            pdf: href(`/api/posters/${row.id}/poster.pdf?theme=${row.theme}`),
+            png: href(`/api/posters/${row.id}/poster.png?theme=${row.theme}`),
           }
         : null,
     };
@@ -175,7 +201,7 @@ export function createApp(deps: AppDeps): App {
     store.createPoster({ id, topic: topic.value, level: level.value, theme: config.defaultTheme, visitorHash: visitor, now: now(), retentionDays: config.retentionDays });
     log.info('poster queued', { id });
     runner.pump();
-    json(res, 201, { id, url: `/p/${id}` });
+    json(res, 201, { id, url: href(`/p/${id}`) });
   }
 
   async function switchTheme(req: http.IncomingMessage, res: http.ServerResponse, id: string): Promise<void> {
@@ -224,13 +250,23 @@ export function createApp(deps: AppDeps): App {
     if (!file.startsWith(root + path.sep)) throw new HttpError(404, 'not_found', 'Not found.');
     let data: Buffer;
     try { data = fs.readFileSync(file); } catch { throw new HttpError(404, 'not_found', 'Not found.'); }
+    if (path.extname(file) === '.html') data = withBase(file, data);
     send(res, status, data, MIME[path.extname(file)] ?? 'application/octet-stream', { 'Cache-Control': 'public, max-age=300', ...extra });
   }
 
   async function route(req: http.IncomingMessage, res: http.ServerResponse): Promise<string> {
     const url = new URL(req.url ?? '/', 'http://localhost');
-    const p = url.pathname;
     const method = req.method ?? 'GET';
+    let p = url.pathname;
+    // A proxy may pass the prefix on or strip it. Both work.
+    if (base !== '/') {
+      if (p === base.slice(0, -1)) {
+        res.writeHead(301, { Location: base });
+        res.end();
+        return 'base redirect';
+      }
+      if (p.startsWith(base)) p = p.slice(base.length - 1);
+    }
 
     if (method === 'GET' && p in PAGES) { serveFile(res, PAGES[p]!); return p; }
     if (method === 'GET' && /^\/p\/[^/]+$/.test(p)) {
@@ -268,7 +304,7 @@ export function createApp(deps: AppDeps): App {
       .then((l) => { label = l; })
       .catch((err) => {
         if (err instanceof HttpError) {
-          if (req.url?.startsWith('/api/') || req.method === 'POST') json(res, err.status, { error: err.code, message: err.message });
+          if (/^\/(?:[^?]*\/)?api\//.test(req.url ?? '') || req.method === 'POST') json(res, err.status, { error: err.code, message: err.message });
           else serveFile(res, 'notfound.html', err.status);
         } else {
           log.error('request failed', { path: label, error: String(err) });

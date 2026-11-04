@@ -53,6 +53,9 @@ const MIGRATIONS = [
     posters INTEGER NOT NULL DEFAULT 0,
     cost_cents REAL NOT NULL DEFAULT 0
   );`,
+  // Daily token and AI call counts, for DAILY_TOKEN_BUDGET and DAILY_REQUEST_CAP.
+  `ALTER TABLE daily_usage ADD COLUMN tokens INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE daily_usage ADD COLUMN requests INTEGER NOT NULL DEFAULT 0;`,
 ];
 
 export class Store {
@@ -107,20 +110,26 @@ export class Store {
     this.db.prepare('UPDATE posters SET theme = ? WHERE id = ?').run(theme, id);
   }
 
+  // One call per AI request, so the daily request count goes up by one each time.
   addUsage(id: string, inputTokens: number, outputTokens: number, cents: number, now: Date): void {
     this.db.prepare('UPDATE posters SET input_tokens = input_tokens + ?, output_tokens = output_tokens + ?, cost_cents = cost_cents + ? WHERE id = ?').run(inputTokens, outputTokens, cents, id);
     this.db
-      .prepare('INSERT INTO daily_usage (day, posters, cost_cents) VALUES (?, 0, ?) ON CONFLICT(day) DO UPDATE SET cost_cents = cost_cents + excluded.cost_cents')
-      .run(dayOf(now), cents);
+      .prepare(
+        `INSERT INTO daily_usage (day, posters, cost_cents, tokens, requests) VALUES (?, 0, ?, ?, 1)
+         ON CONFLICT(day) DO UPDATE SET cost_cents = cost_cents + excluded.cost_cents, tokens = tokens + excluded.tokens, requests = requests + 1`,
+      )
+      .run(dayOf(now), cents, inputTokens + outputTokens);
   }
 
   countPosterMade(now: Date): void {
     this.db.prepare('INSERT INTO daily_usage (day, posters, cost_cents) VALUES (?, 1, 0) ON CONFLICT(day) DO UPDATE SET posters = posters + 1').run(dayOf(now));
   }
 
-  dayUsage(now: Date): { posters: number; costCents: number } {
-    const r = this.db.prepare('SELECT posters, cost_cents FROM daily_usage WHERE day = ?').get(dayOf(now)) as { posters: number; cost_cents: number } | undefined;
-    return { posters: r?.posters ?? 0, costCents: r?.cost_cents ?? 0 };
+  dayUsage(now: Date): { posters: number; costCents: number; tokens: number; requests: number } {
+    const r = this.db.prepare('SELECT posters, cost_cents, tokens, requests FROM daily_usage WHERE day = ?').get(dayOf(now)) as
+      | { posters: number; cost_cents: number; tokens: number; requests: number }
+      | undefined;
+    return { posters: r?.posters ?? 0, costCents: r?.cost_cents ?? 0, tokens: r?.tokens ?? 0, requests: r?.requests ?? 0 };
   }
 
   // Posters that count toward a visitor's limit (failed and refused ones do not), and all attempts.

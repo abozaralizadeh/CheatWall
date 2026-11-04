@@ -14,12 +14,12 @@ Source available, free for non-commercial use (PolyForm Noncommercial 1.0.0). Se
 
 ## Status
 
-Early. The site, job queue, limits, poster layout and PDF export all work and are tested. The poster text comes from a local fake provider with sample data, so real AI quality and cost are not measured yet. The Anthropic provider is written but has only run against a mocked client. Nothing here has been deployed.
+Early. The site, job queue, limits, poster layout and PDF export all work and are tested. The poster text comes from a local fake provider with sample data, so real AI quality and cost are not measured yet. The Azure OpenAI and Anthropic providers are written but have only run against mocks.
 
 ## How it works
 
 1. You send a topic, and optionally a level.
-2. The server checks your limit and the daily spend cap.
+2. The server checks your limit and the daily caps (money, tokens and AI requests).
 3. A background job checks the topic, writes the poster as structured data, and reviews it in a second pass.
 4. Our templates draw the poster. A headless Chrome fits it to one page and exports a PDF and a PNG.
 
@@ -39,7 +39,7 @@ npm start
 
 Open http://127.0.0.1:3000. The default provider is the local fake: it needs no key and costs nothing. It has handwritten posters for SQL, Spanish verbs and organic chemistry, and a labelled placeholder for any other topic.
 
-To try a real model, set `PROVIDER=anthropic` and `ANTHROPIC_API_KEY` in `.env`. Keep `DAILY_CAP_CENTS` low for the first runs.
+To try a real model, set `PROVIDER=azure` and the `AZURE_OPENAI_*` values in `.env` (a fallback deployment is optional), or `PROVIDER=anthropic` and `ANTHROPIC_API_KEY`. Keep the daily caps low for the first runs. They're checked before every AI call.
 
 Other commands:
 
@@ -55,9 +55,11 @@ npm run typecheck
 npm test
 ```
 
-79 tests, about 5 minutes, because some of them drive a real browser.
+88 tests, about 5 minutes, because some of them drive a real browser. `node scripts/prefix-check.ts` also makes a poster in a real browser with the site served under `/cheatwall/`, the way a shared nginx serves it.
 
 ## Run it on a VM
+
+On a VM of its own:
 
 ```bash
 sudo ./setup_service.sh                                   # first run installs, later runs update and restart
@@ -65,15 +67,28 @@ sudo CHEATWALL_DOMAIN=example.com -E ./setup_service.sh   # also sets up Caddy f
 journalctl -u cheatwall.service -f                        # live logs
 ```
 
-A rotating log file (10 MB x 5) is kept in `/var/lib/cheatwall/logs/`. Secrets live in `/etc/cheatwall/cheatwall.env`, never in the repo. `.env.example` lists every setting. The script has not been run on a real VM yet, so read it before you use it.
+A rotating log file (10 MB x 5) is kept in `/var/lib/cheatwall/logs/`. Secrets live in `/etc/cheatwall/cheatwall.env`, never in the repo. `.env.example` lists every setting.
+
+On a VM you share with other sites, behind an nginx you already run, under a path:
+
+```bash
+sudo SERVICE_NAME=cheatwall PORT=8603 BASE_PATH=/cheatwall/ NGINX_SNIPPET=/etc/nginx/snippets.d/cheatwall.conf ./setup_service.sh
+journalctl -u cheatwall -f
+```
+
+This mode installs nothing: no apt, no Caddy, no firewall rules. It stops with a clear message if Node 24, nginx or a working Chromium is missing. It runs the app in place as the folder's owner, keeps `./.env`, and writes only two nginx files: the snippet (a location block for the path) and a rate limit zone in `/etc/nginx/conf.d/`. If `nginx -t` fails, both go back to how they were. Your nginx server block has to include the snippet folder.
+
+Neither mode has been run on a real VM yet, so read the script before you use it.
 
 ## What is real and what is faked
 
 | Part | State |
 | --- | --- |
-| Site, job queue, SQLite, limits, daily spend cap, expiry, logs | Real, tested |
+| Site, job queue, SQLite, limits, daily caps, expiry, logs | Real, tested |
+| Serving under a path like `/cheatwall/` | Real, tested, and checked in a real browser behind a local proxy |
 | Poster templates, fit to page, A2 PDF and PNG, three themes | Real, tested with a real Chrome |
 | Text provider | Fake by default (`PROVIDER=fake`) |
+| Azure OpenAI provider with fallback (`src/ai/azure.ts`) | Written, tested only against a mocked API |
 | Anthropic provider (`src/ai/anthropic.ts`) | Written, tested only against a mocked client |
 | `setup_service.sh`, `.vscode` config | Written, not run on a VM or opened in VS Code |
 | Privacy, terms, about pages | Templates with `[placeholders]`. Fill them in and have them reviewed before you run a public site |

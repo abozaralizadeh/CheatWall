@@ -5,18 +5,27 @@ export interface Config {
   port: number;
   host: string;
   trustProxy: boolean;
+  // When not empty, X-Forwarded-For is read only from these addresses (e.g. 127.0.0.1 for a local nginx).
+  trustedProxies: string[];
+  // Where the site lives in the browser, always with a slash at both ends: "/" or "/cheatwall/".
+  basePath: string;
   dataDir: string;
   logDir: string;
   dbPath: string;
   posterDir: string;
   secretPath: string;
   publicDir: string;
-  provider: 'fake' | 'anthropic';
+  provider: 'fake' | 'anthropic' | 'azure';
   anthropicApiKey: string;
   model: string;
+  azure: AzureTarget;
+  azureFallback: AzureTarget;
+  azureApiVersion: string;
   priceInputCentsPerMTok: number;
   priceOutputCentsPerMTok: number;
   dailyCapCents: number;
+  dailyTokenBudget: number;
+  dailyRequestCap: number;
   postersPerVisitorPerDay: number;
   attemptsPerVisitorPerDay: number;
   retentionDays: number;
@@ -31,6 +40,12 @@ export interface Config {
   logKeep: number;
 }
 
+export interface AzureTarget {
+  endpoint: string;
+  apiKey: string;
+  deployment: string;
+}
+
 function num(env: NodeJS.ProcessEnv, key: string, fallback: number): number {
   const raw = env[key];
   if (raw === undefined || raw === '') return fallback;
@@ -42,13 +57,17 @@ function num(env: NodeJS.ProcessEnv, key: string, fallback: number): number {
 export function loadConfig(env: NodeJS.ProcessEnv = process.env, root = process.cwd()): Config {
   const dataDir = path.resolve(root, env.DATA_DIR || './data');
   const provider = env.PROVIDER || 'fake';
-  if (provider !== 'fake' && provider !== 'anthropic') {
-    throw new Error(`PROVIDER must be "fake" or "anthropic", got "${provider}"`);
+  if (provider !== 'fake' && provider !== 'anthropic' && provider !== 'azure') {
+    throw new Error(`PROVIDER must be "fake", "anthropic" or "azure", got "${provider}"`);
   }
+  const trust = (env.TRUST_PROXY || '').trim();
+  const trustedProxies = trust && trust !== 'true' && trust !== 'false' ? trust.split(',').map((s) => s.trim()).filter(Boolean) : [];
   return {
     port: num(env, 'PORT', 3000),
     host: env.HOST || '127.0.0.1',
-    trustProxy: env.TRUST_PROXY === 'true',
+    trustProxy: trust === 'true' || trustedProxies.length > 0,
+    trustedProxies,
+    basePath: normalizeBasePath(env.BASE_PATH),
     dataDir,
     logDir: path.resolve(root, env.LOG_DIR || './logs'),
     dbPath: path.join(dataDir, 'cheatwall.db'),
@@ -58,9 +77,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, root = process.
     provider,
     anthropicApiKey: env.ANTHROPIC_API_KEY || '',
     model: env.AI_MODEL || 'claude-opus-5-5',
+    azure: { endpoint: env.AZURE_OPENAI_ENDPOINT || '', apiKey: env.AZURE_OPENAI_API_KEY || '', deployment: env.AZURE_OPENAI_DEPLOYMENT || '' },
+    azureFallback: { endpoint: env.FALLBACK_AZURE_OPENAI_ENDPOINT || '', apiKey: env.FALLBACK_AZURE_OPENAI_API_KEY || '', deployment: env.FALLBACK_AZURE_OPENAI_DEPLOYMENT || '' },
+    azureApiVersion: env.AZURE_OPENAI_API_VERSION || '',
     priceInputCentsPerMTok: num(env, 'PRICE_INPUT_CENTS_PER_MTOK', 400),
     priceOutputCentsPerMTok: num(env, 'PRICE_OUTPUT_CENTS_PER_MTOK', 2000),
     dailyCapCents: num(env, 'DAILY_CAP_CENTS', 500),
+    dailyTokenBudget: num(env, 'DAILY_TOKEN_BUDGET', 2_000_000),
+    dailyRequestCap: num(env, 'DAILY_REQUEST_CAP', 300),
     postersPerVisitorPerDay: num(env, 'POSTERS_PER_VISITOR_PER_DAY', 3),
     attemptsPerVisitorPerDay: num(env, 'ATTEMPTS_PER_VISITOR_PER_DAY', 15),
     retentionDays: num(env, 'RETENTION_DAYS', 30),
@@ -74,6 +98,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, root = process.
     logMaxBytes: num(env, 'LOG_MAX_BYTES', 10 * 1024 * 1024),
     logKeep: num(env, 'LOG_KEEP', 5),
   };
+}
+
+export function normalizeBasePath(raw: string | undefined): string {
+  const parts = (raw || '/').split('/').filter(Boolean);
+  if (parts.some((p) => !/^[A-Za-z0-9._~-]+$/.test(p) || p === '.' || p === '..')) throw new Error(`BASE_PATH must be a plain path like /cheatwall/, got "${raw}"`);
+  return parts.length ? `/${parts.join('/')}/` : '/';
 }
 
 export function costCents(config: Pick<Config, 'priceInputCentsPerMTok' | 'priceOutputCentsPerMTok'>, inputTokens: number, outputTokens: number): number {

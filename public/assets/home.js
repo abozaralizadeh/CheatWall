@@ -1,4 +1,4 @@
-import { recall, remember } from './dom.js';
+import { base, recall, remember } from './dom.js';
 
 const form = document.getElementById('make');
 const topic = document.getElementById('topic');
@@ -21,7 +21,7 @@ form.addEventListener('submit', async (e) => {
   go.disabled = true;
   go.textContent = 'Starting...';
   try {
-    const res = await fetch('/api/posters', {
+    const res = await fetch(`${base}api/posters`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ topic: value, level: level.value }),

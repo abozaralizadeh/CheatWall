@@ -1,4 +1,4 @@
-import { el, remember } from './dom.js';
+import { base, el, remember } from './dom.js';
 
 const root = document.getElementById('root');
 const id = location.pathname.split('/').pop();
@@ -10,7 +10,7 @@ function show(...nodes) {
 }
 
 function again(topic, label) {
-  return el('a', { class: 'btn', href: '/', onclick: () => remember('cw.topic', topic || '') }, label);
+  return el('a', { class: 'btn', href: base, onclick: () => remember('cw.topic', topic || '') }, label);
 }
 
 function message(title, text, topic, label) {
@@ -34,7 +34,7 @@ function working(p) {
 
 function ready(p) {
   const expires = new Date(p.expiresAt).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
-  const preview = el('img', { class: 'preview', alt: `Preview of the poster: ${p.title || p.topic}`, src: `/api/posters/${p.id}/poster.png?theme=${p.theme}` });
+  const preview = el('img', { class: 'preview', alt: `Preview of the poster: ${p.title || p.topic}`, src: `${base}api/posters/${p.id}/poster.png?theme=${p.theme}` });
   const buttons = p.themes.map((t) =>
     el('button', { type: 'button', role: 'radio', 'aria-checked': String(t.id === p.theme), onclick: () => pickTheme(p, t.id) }, t.name),
   );
@@ -67,7 +67,7 @@ async function pickTheme(p, theme) {
   const buttons = root.querySelectorAll('.themes button');
   buttons.forEach((b) => (b.disabled = true));
   try {
-    const res = await fetch(`/api/posters/${id}/theme`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ theme }) });
+    const res = await fetch(`${base}api/posters/${id}/theme`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ theme }) });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message);
     current = data;
@@ -92,7 +92,7 @@ function render(p) {
 
 async function poll() {
   try {
-    const res = await fetch(`/api/posters/${id}`, { cache: 'no-store' });
+    const res = await fetch(`${base}api/posters/${id}`, { cache: 'no-store' });
     if (res.status === 404) return message('We could not find that poster', 'The link may be wrong, or the poster may be gone.', '', 'Make a poster');
     const p = await res.json();
     if (!current || current.status !== p.status || current.step?.index !== p.step?.index) render(p);

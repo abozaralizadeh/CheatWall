@@ -21,13 +21,21 @@ export function visitorHash(secret: string, ip: string, now: Date): string {
   return crypto.createHmac('sha256', `${secret}:${dayOf(now)}`).update(ip).digest('hex').slice(0, 32);
 }
 
+export const MSG_FULL = 'CheatWall is full for today. Come back tomorrow, it resets at midnight UTC.';
+
+// True when any site-wide daily cap is used up: money, tokens or AI requests. Checked before every AI call.
+export function dailyCapReached(store: Store, config: Config, now: Date): boolean {
+  const u = store.dayUsage(now);
+  return u.costCents >= config.dailyCapCents || u.tokens >= config.dailyTokenBudget || u.requests >= config.dailyRequestCap;
+}
+
 export type CreateCheck =
   | { ok: true }
   | { ok: false; code: 'visitor_limit' | 'attempt_limit' | 'daily_cap'; message: string };
 
 export function checkCanCreate(store: Store, config: Config, visitor: string, now: Date): CreateCheck {
-  if (store.dayUsage(now).costCents >= config.dailyCapCents) {
-    return { ok: false, code: 'daily_cap', message: 'CheatWall is full for today. Come back tomorrow, it resets at midnight UTC.' };
+  if (dailyCapReached(store, config, now)) {
+    return { ok: false, code: 'daily_cap', message: MSG_FULL };
   }
   const v = store.visitorToday(visitor, now);
   if (v.counted >= config.postersPerVisitorPerDay) {
