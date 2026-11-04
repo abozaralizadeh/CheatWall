@@ -20,7 +20,7 @@ test('migrations run once and the schema works', () => {
   const file = `${dir}/a.db`;
   new Store(file).close();
   const again = new Store(file);
-  assert.equal((again.db.prepare('PRAGMA user_version').get() as any).user_version, 2);
+  assert.equal((again.db.prepare('PRAGMA user_version').get() as any).user_version, 3);
   again.close();
 });
 

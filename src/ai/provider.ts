@@ -22,10 +22,22 @@ export interface TextProvider {
   // Stored with each poster, e.g. "fake-local" or "claude-opus-5-5".
   readonly name: string;
   checkTopic(topic: string, level: Level | null): Promise<Result<TopicCheck>>;
-  writePoster(topic: string, level: Level | null): Promise<Result<unknown>>;
+  // problems: what was wrong with the last attempt, in our own words, so the AI can fix exactly that.
+  writePoster(topic: string, level: Level | null, problems?: string): Promise<Result<unknown>>;
   reviewPoster(topic: string, level: Level | null, content: unknown): Promise<Result<unknown>>;
   // overflow is how many times too big the content was, e.g. 1.2 means cut roughly a sixth.
   shortenPoster(topic: string, content: unknown, overflow: number): Promise<Result<unknown>>;
+}
+
+// Thrown when the answer hit the output limit before it was complete. It carries the usage, because those tokens
+// were spent and must still count toward the daily caps.
+export class OutputCutOff extends Error {
+  usage: Usage;
+  constructor(usage: Usage) {
+    super('The AI ran out of room before it finished the poster.');
+    this.name = 'OutputCutOff';
+    this.usage = usage;
+  }
 }
 
 // Thrown when the model itself declines. The pipeline turns this into a "refused" poster.

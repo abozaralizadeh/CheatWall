@@ -272,3 +272,49 @@ export function genericPoster(topic: string, level: Level | null): PosterContent
     ],
   };
 }
+
+// Topics that ask for a whole field at once: "the whole Python standard library", "all of organic chemistry".
+export function isBigTopic(topic: string): boolean {
+  return /\b(whole|entire|all of|everything|complete|full)\b/i.test(topic);
+}
+
+// A dense placeholder poster for big topics. It goes over the limits on purpose, the way real models do
+// (wide tables, long cells, long lists, too many sections), so the repair step and the bigger sheets get exercised.
+// Returned as unknown because it is not valid until it has been repaired.
+export function bigPoster(topic: string, level: Level | null): unknown {
+  const short = [...topic].length > 40 ? [...topic].slice(0, 37).join('') + '...' : topic;
+  const words = (n: number, seed: number) =>
+    Array.from({ length: n }, (_, i) => ['module', 'function', 'pattern', 'rule', 'example', 'detail', 'case', 'idea'][(i + seed) % 8]).join(' ');
+  const cell = (r: number, c: number, len: number) => `Row ${r + 1} col ${c + 1}: ${words(40, r + c)}`.slice(0, len);
+  const sections: unknown[] = [];
+  for (let i = 0; i < 26; i++) {
+    const n = i + 1;
+    switch (i % 6) {
+      case 0:
+        // 8 columns, longer than the 6 allowed, with 120 character cells
+        sections.push({ kind: 'table', heading: `Overview table ${n}`, columns: Array.from({ length: 8 }, (_, c) => `Col ${c + 1}`), rows: Array.from({ length: 5 }, (_, r) => Array.from({ length: 8 }, (_, c) => cell(r, c, c % 2 ? 120 : 30))) });
+        break;
+      case 1:
+        sections.push({ kind: 'points', heading: `Key ideas ${n}`, items: Array.from({ length: 19 }, (_, j) => `Point ${j + 1} about ${short}: ${words(j % 3 === 0 ? 50 : 10, j)}`) });
+        break;
+      case 2:
+        sections.push({ kind: 'definitions', heading: `Terms ${n}`, items: Array.from({ length: 9 }, (_, j) => ({ term: `Term ${n}.${j + 1}`, meaning: `Meaning in ${short}: ${words(14, j)}` })) });
+        break;
+      case 3:
+        // 6 columns and 120 character cells, the shape the real model sends
+        sections.push({ kind: 'table', heading: `Reference ${n}`, columns: ['Name', 'Kind', 'Use', 'Example', 'Watch out', 'Since'], rows: Array.from({ length: 7 }, (_, r) => Array.from({ length: 6 }, (_, c) => cell(r, c, c === 0 ? 20 : 120))) });
+        break;
+      case 4:
+        sections.push({ kind: 'steps', heading: `How to ${n}`, items: Array.from({ length: 7 }, (_, j) => `Step ${j + 1}: ${words(12, j)}`) });
+        break;
+      case 5:
+        sections.push({ kind: 'code', heading: `Example ${n}`, language: 'python', code: Array.from({ length: 30 }, (_, j) => `value_${j} = compute(${j}, "${words(3, j)}")`).join('\n') });
+        break;
+    }
+  }
+  return {
+    title: `${titleCase(topic)}: the complete cheat sheet for everything you need, on one big poster`,
+    subtitle: `Sample big poster${level ? ` for ${level} level` : ''}, made by the local test generator`,
+    sections,
+  };
+}

@@ -2,6 +2,7 @@ import katex from 'katex';
 import type { PosterContent, Section } from '../content.ts';
 import { esc } from './escape.ts';
 import { baseFontCss, katexFontCss } from './fonts.ts';
+import { MIN_SCALE } from './sheets.ts';
 import { themeCss, type Theme } from './themes.ts';
 
 // Turns poster content into one HTML page. Rules that keep it safe:
@@ -9,7 +10,7 @@ import { themeCss, type Theme } from './themes.ts';
 // - KaTeX output is the only HTML we trust, and it runs with trust turned off
 // - the page carries a CSP: no network at all, and no scripts in the final render
 
-export const MIN_SCALE = 0.6;
+export { MIN_SCALE };
 export const MAX_SCALE = 1.7;
 export const BASE_GAP_EM = 0.9;
 export const MAX_GAP_EM = 3.4;
@@ -21,6 +22,10 @@ export interface BuildOptions {
   theme: Theme;
   widthMm: number;
   heightMm: number;
+  // Text columns on the sheet. Bigger sheets get more.
+  columns?: number;
+  // measure mode: the smallest text size allowed on this sheet
+  minScale?: number;
   mode: 'measure' | 'final';
   // measure mode: how much to back off the best-fit size, to leave room for print differences
   shrink?: number;
@@ -29,6 +34,8 @@ export interface BuildOptions {
   gap?: number;
   // final mode: text size for each table, in em, found by the measure step
   tableFonts?: number[];
+  // final mode: tables that may break inside long words, found by the measure step
+  tableWrap?: boolean[];
 }
 
 function math(latex: string): string {
@@ -39,7 +46,7 @@ function math(latex: string): string {
   }
 }
 
-function section(s: Section, index: number, tableFont: (n: number) => string): string {
+function section(s: Section, index: number, tableAttrs: () => string): string {
   const cls = `sec k-${s.kind} c${index % 4}`;
   const head = `<h2>${esc(s.heading)}</h2>`;
   switch (s.kind) {
@@ -50,7 +57,7 @@ function section(s: Section, index: number, tableFont: (n: number) => string): s
     case 'definitions':
       return `<section class="${cls}">${head}<dl>${s.items.map((i) => `<dt>${esc(i.term)}</dt><dd>${esc(i.meaning)}</dd>`).join('')}</dl></section>`;
     case 'table':
-      return `<section class="${cls}">${head}<table${tableFont(index)}><thead><tr>${s.columns.map((c) => `<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${s.rows
+      return `<section class="${cls}">${head}<table${tableAttrs()}><thead><tr>${s.columns.map((c) => `<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${s.rows
         .map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join('')}</tr>`)
         .join('')}</tbody></table></section>`;
     case 'formulas':
@@ -62,7 +69,7 @@ function section(s: Section, index: number, tableFont: (n: number) => string): s
   }
 }
 
-const CSS = (w: number, h: number) => `
+const CSS = (w: number, h: number, cols: number) => `
 @page{size:${w}mm ${h}mm;margin:0}
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;background:var(--bg);-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -71,7 +78,7 @@ html,body{margin:0;padding:0;background:var(--bg);-webkit-print-color-adjust:exa
 .head{background:var(--head-bg);color:var(--head-ink);padding:13mm 14mm 10mm}
 .head h1{margin:0;font-size:3.7em;line-height:1.04;font-weight:800;letter-spacing:-.02em}
 .head p{margin:.45em 0 0;font-size:1.35em;font-weight:500}
-.main{flex:1 1 auto;min-height:0;padding:9mm 14mm 3mm;column-count:3;column-gap:1.5em;column-fill:balance;overflow:hidden}
+.main{flex:1 1 auto;min-height:0;padding:9mm 14mm 3mm;column-count:${cols};column-gap:1.5em;column-fill:balance;overflow:hidden}
 .sec{break-inside:avoid;margin:0 0 var(--gap);background:var(--card);border:1px solid var(--rule);border-top:.35em solid var(--c);
   border-radius:.55em;padding:.75em 1em .95em}
 .c0{--c:var(--c0)}.c1{--c:var(--c1)}.c2{--c:var(--c2)}.c3{--c:var(--c3)}
@@ -89,6 +96,7 @@ dd{margin:.05em 0 0}
 table{width:100%;border-collapse:collapse;font-size:.92em}
 th{background:var(--head-bg);color:var(--head-ink);text-align:left;font-weight:650;padding:.3em .45em}
 td{padding:.28em .45em;border-bottom:1px solid var(--rule);vertical-align:top}
+table.wrap th,table.wrap td{overflow-wrap:anywhere}
 tbody tr:nth-child(even) td{background:var(--stripe)}
 pre{margin:0;background:var(--code-bg);color:var(--code-ink);border-radius:.4em;padding:.6em .8em;overflow:hidden}
 code{font-family:"JetBrains Mono Variable",ui-monospace,monospace;font-size:.82em;line-height:1.5;white-space:pre-wrap;word-break:break-word}
@@ -104,9 +112,9 @@ code{font-family:"JetBrains Mono Variable",ui-monospace,monospace;font-size:.82e
 `;
 
 // Runs in a page with network blocked. Finds the biggest text size, then the widest gap, where nothing spills into a 4th column.
-const FIT_SCRIPT = (shrink: number) => `
+const FIT_SCRIPT = (shrink: number, minScale: number) => `
 (function(){
-  var MIN=${MIN_SCALE},MAX=${MAX_SCALE},G0=${BASE_GAP_EM},GMAX=${MAX_GAP_EM},SHRINK=${shrink};
+  var MIN=${minScale},MAX=${MAX_SCALE},G0=${BASE_GAP_EM},GMAX=${MAX_GAP_EM},SHRINK=${shrink};
   var root=document.querySelector('.poster'),main=document.querySelector('.main');
   // Each table gets the biggest text size (down to TMIN) at which it stays inside its card, so one table with long words
   // does not force the whole poster to shrink.
@@ -115,17 +123,20 @@ const FIT_SCRIPT = (shrink: number) => `
     var sec=t.closest('.sec'),cs=getComputedStyle(sec);
     return t.getBoundingClientRect().right>sec.getBoundingClientRect().right-parseFloat(cs.paddingRight)+1;
   }
+  // A table that still spills at the smallest size may break inside long words, so it always fits its card.
   function sizeTables(){
-    var fonts=[];
+    var fonts=[],wraps=[];
     main.querySelectorAll('.sec table').forEach(function(t){
-      var fs=TBASE;t.style.fontSize=fs+'em';
+      var fs=TBASE;t.classList.remove('wrap');t.style.fontSize=fs+'em';
       while(tableOut(t)&&fs>TMIN+0.001){fs=Math.round((fs-0.04)*100)/100;t.style.fontSize=fs+'em';}
-      fonts.push(fs);
+      var w=tableOut(t);if(w)t.classList.add('wrap');
+      fonts.push(fs);wraps.push(w);
     });
+    tableWrap=wraps;
     return fonts;
   }
-  var tableFonts=[];
-  function set(s,g){root.style.setProperty('--s',String(s));root.style.setProperty('--gap',g+'em');tableFonts=sizeTables();}
+  var tableFonts=[],tableWrap=[],cur=MIN;
+  function set(s,g){cur=s;root.style.setProperty('--s',String(s));root.style.setProperty('--gap',g+'em');tableFonts=sizeTables();}
   // Tables, code and formulas must stay inside their card. A table with a long word in a narrow column spills out otherwise.
   function wide(){
     var els=main.querySelectorAll('.sec table,.sec pre,.sec .eq');
@@ -136,7 +147,15 @@ const FIT_SCRIPT = (shrink: number) => `
     }
     return false;
   }
-  function over(){return main.scrollWidth>main.clientWidth+2||wide();}
+  // A card taller than a column gets broken across two columns. That reads badly, so it counts as not fitting.
+  function split(){
+    var secs=main.querySelectorAll('.sec');
+    for(var i=0;i<secs.length;i++){if(secs[i].getClientRects().length>1)return true;}
+    return false;
+  }
+  // Breaking words is a last resort: above the smallest size, a table that needs it counts as not fitting.
+  function broken(){return cur>MIN+0.0001&&tableWrap.some(function(w){return w;});}
+  function over(){return main.scrollWidth>main.clientWidth+2||wide()||split()||broken();}
   function fill(){
     var cs=getComputedStyle(main),pt=parseFloat(cs.paddingTop),pb=parseFloat(cs.paddingBottom);
     var top=main.getBoundingClientRect().top+pt,bottom=top;
@@ -163,16 +182,21 @@ const FIT_SCRIPT = (shrink: number) => `
       gap=glo*0.98;
       set(scale,gap);
     }
-    window.__fit={fits:fits&&!over(),scale:scale,gap:gap,fill:fits?fill():1,overflow:overflow,tableFonts:tableFonts};
+    window.__fit={fits:fits&&!over(),scale:scale,gap:gap,fill:fits?fill():1,overflow:overflow,tableFonts:tableFonts,tableWrap:tableWrap};
   }
   function go(){void root.offsetHeight;document.fonts.ready.then(function(){run();});}
   if(document.readyState==='complete')go();else window.addEventListener('load',go);
 })();
 `;
 
+function clampNum(v: unknown, lo: number, hi: number, fallback: number): number {
+  return typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : fallback;
+}
+
 export function buildPosterHtml(content: PosterContent, opts: BuildOptions): string {
   const hasFormulas = content.sections.some((s) => s.kind === 'formulas');
-  const script = opts.mode === 'measure' ? `<script>${FIT_SCRIPT(opts.shrink ?? 0.985)}</script>` : '';
+  const script = opts.mode === 'measure' ? `<script>${FIT_SCRIPT(opts.shrink ?? 0.985, clampNum(opts.minScale, 0.3, MAX_SCALE, MIN_SCALE))}</script>` : '';
+  const cols = Math.round(clampNum(opts.columns, 1, 8, 3));
   const csp =
     opts.mode === 'measure'
       ? "default-src 'none'; style-src 'unsafe-inline'; font-src data:; img-src data:; script-src 'unsafe-inline'"
@@ -181,22 +205,24 @@ export function buildPosterHtml(content: PosterContent, opts: BuildOptions): str
   const gap = opts.mode === 'final' ? opts.gap ?? BASE_GAP_EM : BASE_GAP_EM;
   // Only tables get an inline size, and it is a number we computed, never text from the AI.
   const sizes = opts.mode === 'final' ? opts.tableFonts ?? [] : [];
+  const wraps = opts.mode === 'final' ? opts.tableWrap ?? [] : [];
   let seen = -1;
-  const tableFont = (_index: number): string => {
+  const tableAttrs = (): string => {
     seen++;
     const v = sizes[seen];
-    return typeof v === 'number' && Number.isFinite(v) && v >= 0.5 && v <= 1.2 ? ` style="font-size:${v}em"` : '';
+    const size = typeof v === 'number' && Number.isFinite(v) && v >= 0.5 && v <= 1.2 ? ` style="font-size:${v}em"` : '';
+    return (wraps[seen] === true ? ' class="wrap"' : '') + size;
   };
   const extra = content.note ? `<p class="extra">${esc(content.note)}</p>` : '';
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="${csp}">
 <title>${esc(content.title)}</title>
-<style>${baseFontCss()}${hasFormulas ? katexFontCss() : ''}${CSS(opts.widthMm, opts.heightMm)}</style>
+<style>${baseFontCss()}${hasFormulas ? katexFontCss() : ''}${CSS(opts.widthMm, opts.heightMm, cols)}</style>
 </head><body>
 <div class="poster" style="${themeCss(opts.theme)}--s:${scale};--gap:${gap}em">
 <header class="head"><h1>${esc(content.title)}</h1><p>${esc(content.subtitle)}</p></header>
-<main class="main">${content.sections.map((s, i) => section(s, i, tableFont)).join('')}</main>
+<main class="main">${content.sections.map((s, i) => section(s, i, tableAttrs)).join('')}</main>
 <footer class="foot"><div class="notes">${extra}<p>${esc(AI_NOTE)}</p></div><div class="brand">${BRAND}</div></footer>
 </div>${script}</body></html>`;
 }

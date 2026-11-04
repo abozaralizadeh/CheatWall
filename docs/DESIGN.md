@@ -52,6 +52,7 @@ The worker runs inside the same service as the app and takes jobs from SQLite, t
 | `message` | text | Reason shown if refused or failed |
 | `visitor_hash` | text | Salted daily hash, for the limit |
 | `model` | text | Which AI model made it |
+| `sheet` | text | The sheet it was drawn on, e.g. `594x841c4` (A1, 4 columns), so a theme switch keeps the size |
 | `input_tokens` | integer | For cost tracking |
 | `output_tokens` | integer | For cost tracking |
 | `cost_cents` | real | Worked out from tokens |
@@ -144,7 +145,7 @@ All screens work on a phone. The poster itself is made for print, so on a phone 
 | Second AI pass reviews the content | Catches many mistakes at a modest cost. It doesn't prove the content is right, so every poster keeps its "check this" note |
 | No source citations in the first version | Model-written citations can be made up. Fake sources are worse than none |
 | Refuse unsafe topics before writing | "Every topic" still needs a line, and checking first avoids paying to write something we'd throw away |
-| A2 portrait PDF | Big enough to read from a desk or a wall, and a vector PDF scales to other sizes |
+| A2 portrait PDF, growing to A1 or A0 for big topics | A2 is big enough to read from a desk or a wall. A topic that won't fit gets more columns and a bigger sheet before it's ever refused |
 | Three themes on one layout | Beauty is the point of the product, but one excellent layout beats five average ones |
 | No accounts | Fastest route to a poster and the least personal data. Limits work without them |
 | Private links, no public gallery | Avoids moderating public content early on |
@@ -176,4 +177,8 @@ Handle heavy traffic, keep posters for good, or guarantee the content is right. 
 | Three daily caps (money, tokens, AI requests), checked before every AI call | Prices per model are easy to get wrong. Tokens and request counts don't depend on a price table, so the worst day stays bounded even if the price settings are off. A job that's already running stops at its next AI call once a cap is spent |
 | The site can live under a path (`BASE_PATH`) | So it can share a VM and a domain with other sites behind one nginx. The server adds the path to the links in its pages and API answers, and accepts requests with or without the path |
 | `TRUST_PROXY` can name the proxy's address | On a shared VM only the local nginx may tell us the visitor's address. Anyone else sending X-Forwarded-For is ignored |
+| Generous content limits, and over-limit answers repaired in code | Real models went over the old limits on big topics (6 table columns, 120 character cells) and the whole poster failed. Now cells take 140 characters, tables 6 columns and 18 rows, and posters 24 sections. Anything over is cut at a word, split into a second table or section, or dropped, and only a poster with no title or under 4 usable sections is retried, once, with the exact problems |
+| Posters grow before they fail | More columns, then A1, then A0, then slightly smaller text on A0. The AI is asked to shorten only after that. The PNG stays about 2400 px wide on any sheet |
+| A card split across two columns counts as not fitting | A tall table broken over two columns lost its heading on the second half |
+| 32k output tokens per poster call (`AI_MAX_OUTPUT_TOKENS`) | Big posters plus a reasoning model's thinking ran out of room at 24k. An answer cut off at the limit still counts its tokens toward the daily caps. The Anthropic provider stays at 16k, because its SDK refuses longer non-streaming calls |
 | Shared VM mode in `setup_service.sh` | Another site's nginx already owns ports 80 and 443. This mode installs nothing and writes only its own two nginx files, and it rolls them back if `nginx -t` fails |

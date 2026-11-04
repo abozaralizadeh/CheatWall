@@ -45,18 +45,22 @@ flowchart TD
     A[Queued] --> B{Topic allowed?}
     B -- No --> R[Refused, reason shown]
     B -- Yes --> C[AI writes content]
-    C --> D{Valid structure?}
-    D -- No, first time --> C
+    C --> P[Repair in code: cut long text, split wide tables and long lists]
+    P --> D{Valid structure?}
+    D -- No, first time --> C2[AI writes again, told the exact problems]
+    C2 --> P
     D -- No, second time --> F[Failed]
-    D -- Yes --> E[AI reviews content]
-    E --> G[Draw and fit to page]
+    D -- Yes --> E[AI reviews content, repaired the same way]
+    E --> G[Draw and fit, growing the sheet up to A0]
     G --> H{Fits?}
-    H -- No --> I[AI shortens content]
+    H -- No --> I[AI shortens content, once]
     I --> G
     H -- Yes --> J[Export PDF and PNG]
     J --> K[Ready]
-    H -- Still no after 2 tries --> F
+    H -- Still no --> F
 ```
+
+Most AI answers that break a limit only break it a little: a cell that's too long, a seventh column, a 17th bullet. Those are fixed in code, so a whole poster is never thrown away over one long cell. Only an answer with no title or fewer than 4 usable sections gets the one retry.
 
 If the AI model itself declines a request, that counts as Refused. If the server restarts mid-job, the worker picks up unfinished jobs from the start of the job. Failed posters don't count against your limit.
 
@@ -65,10 +69,13 @@ If the AI model itself declines a request, that counts as Refused. If the server
 The poster has to fill the page, with nothing cut off and no big gaps.
 
 1. Draw the content in the chosen template at the largest text size.
-2. Measure whether it overflows.
+2. Measure whether it overflows. A card broken across two columns, or a table wider than its card, counts as overflowing.
 3. Step the text size down until it fits, stopping at the smallest readable size.
-4. If it still overflows, ask the AI to cut it by the measured amount.
-5. If the page ends up too empty, spacing grows to fill it.
+4. If it still overflows, try the next sheet: A2 with 4 columns, then A1 with 4 and 5, then A0 with 5 and 6, and last A0 with slightly smaller text (about 8 pt in print).
+5. Only if even that overflows, ask the AI to cut it by the measured amount, once. If it still doesn't fit, the poster fails with "try a narrower topic".
+6. If the page ends up too empty, spacing grows to fill it.
+
+A table with a very long word may break inside the word, but only at the smallest text size.
 
 ```mermaid
 flowchart TD
@@ -78,7 +85,10 @@ flowchart TD
     C -- No --> D[Step text size down]
     D --> A2[Redraw]
     A2 --> B
-    C -- Yes --> E[Ask AI to shorten]
+    C -- Yes --> S{Bigger sheet left?}
+    S -- Yes --> N[Next sheet: more columns, then A1, then A0]
+    N --> A
+    S -- No --> E[Ask AI to shorten, once]
     E --> A
     F --> G[Done]
 ```
@@ -89,7 +99,7 @@ flowchart TD
 2. The worker redraws the saved content and exports new files.
 3. The preview updates.
 
-There's no AI call, so it's free and doesn't count against your limit. The fit stays the same because themes only change colours.
+There's no AI call, so it's free and doesn't count against your limit. The poster is redrawn on the sheet it was made on (stored as `sheet`), and the fit stays the same because themes only change colours.
 
 ## 5. Limits and the daily cap
 

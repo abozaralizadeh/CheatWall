@@ -253,7 +253,7 @@ test('shorten loop: too big gets shortened and re-fitted, hopeless gets a clear 
     const no = await waitDone(s, (await make(s, 'Huge topic')).data.id);
     assert.equal(no.status, 'failed');
     assert.equal(no.message, MSG_NO_FIT);
-    assert.equal(s.provider.calls.shorten, 3, 'gives up after two shortenings');
+    assert.equal(s.provider.calls.shorten, 2, 'the renderer already grew the sheet, so only one shortening is tried');
   } finally { await s.close(); }
 });
 

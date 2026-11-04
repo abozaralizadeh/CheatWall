@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createProvider } from '../src/ai/index.ts';
 import { loadConfig } from '../src/config.ts';
-import { normalizeLevel, normalizeTopic, parsePoster, slugify } from '../src/content.ts';
+import { normalizeLevel, normalizeTopic, parsePoster, repairPoster, slugify } from '../src/content.ts';
 import { ChromiumRenderer } from '../src/render/chromium.ts';
 import { getTheme } from '../src/render/themes.ts';
 import { loadEnvFile } from '../src/env.ts';
@@ -29,7 +29,7 @@ const check = await provider.checkTopic(topic.value, level.value);
 if (!check.value.allowed) { console.error('Refused: ' + (check.value.reason ?? 'topic not allowed')); process.exit(2); }
 const written = await provider.writePoster(topic.value, level.value);
 const reviewed = await provider.reviewPoster(topic.value, level.value, written.value);
-const parsed = parsePoster(reviewed.value);
+const parsed = parsePoster(repairPoster(reviewed.value).value);
 if (!parsed.ok) { console.error('Provider returned bad content: ' + parsed.error); process.exit(3); }
 
 const renderer = new ChromiumRenderer({ chromePath: config.chromePath, concurrency: 1, widthMm: config.posterWidthMm, heightMm: config.posterHeightMm });

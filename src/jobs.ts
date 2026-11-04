@@ -1,6 +1,6 @@
 import { costCents, type Config } from './config.ts';
-import { parsePoster, type Level, type PosterContent } from './content.ts';
-import { ProviderRefusal, type TextProvider, type Usage } from './ai/provider.ts';
+import { parsePoster, repairPoster, type Level, type PosterContent } from './content.ts';
+import { OutputCutOff, ProviderRefusal, type Result, type TextProvider, type Usage } from './ai/provider.ts';
 import { writePosterFiles } from './files.ts';
 import { dailyCapReached, MSG_FULL } from './limits.ts';
 import type { Logger } from './log.ts';
@@ -17,7 +17,7 @@ export const SENSITIVE_NOTES = {
 export const MSG_FAILED = 'Something went wrong on our side. Try again. This one does not count toward your daily limit.';
 export { MSG_FULL };
 export const MSG_BAD_CONTENT = 'The AI gave us something we could not turn into a poster. Try again. This one does not count toward your daily limit.';
-export const MSG_NO_FIT = 'We could not fit this topic on one poster. Try a narrower topic. This one does not count toward your daily limit.';
+export const MSG_NO_FIT = 'This topic is too big even for our biggest poster. Try a narrower topic. This one does not count toward your daily limit.';
 
 export interface JobDeps {
   config: Config;
@@ -97,8 +97,25 @@ export class JobRunner {
     store.addUsage(id, u.inputTokens, u.outputTokens, costCents(config, u.inputTokens, u.outputTokens), this.now());
   }
 
-  private validate(raw: unknown): PosterContent {
-    const parsed = parsePoster(raw);
+  // Every AI call goes through here: the caps are checked first and the tokens are counted even when the answer
+  // was cut off.
+  private async ask<T>(id: string, call: () => Promise<Result<T>>): Promise<Result<T>> {
+    this.guard();
+    try {
+      const r = await call();
+      this.spend(id, r.usage);
+      return r;
+    } catch (err) {
+      if (err instanceof OutputCutOff) this.spend(id, err.usage);
+      throw err;
+    }
+  }
+
+  // Repairs what can be repaired in code, then checks the result. Throws BadContent with the exact problems left.
+  private accept(id: string, raw: unknown, step: string): PosterContent {
+    const fixed = repairPoster(raw);
+    if (fixed.fixes.length) this.d.log.info('repaired poster content', { id, step, fixes: fixed.fixes.length, sample: fixed.fixes.slice(0, 5) });
+    const parsed = parsePoster(fixed.value);
     if (!parsed.ok) throw new BadContent(parsed.error);
     return parsed.value;
   }
@@ -110,25 +127,26 @@ export class JobRunner {
     const started = Date.now();
     try {
       store.setStatus(id, 'checking');
-      this.guard();
-      const check = await provider.checkTopic(row.topic, level);
-      this.spend(id, check.usage);
+      const check = await this.ask(id, () => provider.checkTopic(row.topic, level));
       if (!check.value.allowed) {
         store.setStatus(id, 'refused', check.value.reason ?? 'We do not make posters for this topic.');
         log.info('topic refused', { id });
         return;
       }
 
+      // One write, and at most one retry that is told exactly what was wrong.
       store.setStatus(id, 'writing');
       let content: PosterContent | null = null;
+      let problems: string | undefined;
       for (let attempt = 0; attempt < 2 && !content; attempt++) {
-        this.guard();
-        const w = await provider.writePoster(row.topic, level);
-        this.spend(id, w.usage);
         try {
-          content = this.validate(w.value);
+          const w = await this.ask(id, () => provider.writePoster(row.topic, level, problems));
+          content = this.accept(id, w.value, 'write');
         } catch (err) {
-          log.warn('written poster was invalid', { id, attempt, error: String(err) });
+          if (err instanceof BadContent) problems = err.message;
+          else if (err instanceof OutputCutOff) problems = 'The answer was cut off because it was too long. Write less: shorter lines, fewer rows, and no more than 16 sections.';
+          else throw err;
+          log.warn('written poster was invalid', { id, attempt, error: problems });
         }
       }
       if (!content) {
@@ -137,13 +155,11 @@ export class JobRunner {
       }
 
       store.setStatus(id, 'reviewing');
-      this.guard();
       try {
-        const r = await provider.reviewPoster(row.topic, level, content);
-        this.spend(id, r.usage);
-        content = this.validate(r.value);
+        const r = await this.ask(id, () => provider.reviewPoster(row.topic, level, content));
+        content = this.accept(id, r.value, 'review');
       } catch (err) {
-        if (err instanceof ProviderRefusal) throw err;
+        if (err instanceof ProviderRefusal || err instanceof CapReached) throw err;
         // A bad review must not lose a good poster. Keep the written version.
         log.warn('review result unusable, keeping the written poster', { id, error: String(err) });
       }
@@ -151,26 +167,32 @@ export class JobRunner {
       const note = check.value.sensitive ? SENSITIVE_NOTES[check.value.sensitive] : null;
       content = { ...content, note: note ?? undefined };
 
+      // The renderer grows the sheet (more columns, then A1, then A0) before it gives up. Only when even the
+      // biggest sheet is too small do we ask the AI to cut, once.
       store.setStatus(id, 'rendering');
       const theme = getTheme(row.theme) ?? getTheme(config.defaultTheme)!;
       let result = await renderer.render(content, theme);
-      for (let i = 0; i < 2 && !result.fit.fits; i++) {
-        this.guard();
-        const s = await provider.shortenPoster(row.topic, content, result.fit.overflow);
-        this.spend(id, s.usage);
-        content = { ...this.validate(s.value), note: note ?? undefined };
-        result = await renderer.render(content, theme);
+      if (!result.fit.fits) {
+        try {
+          const s = await this.ask(id, () => provider.shortenPoster(row.topic, content, result.fit.overflow));
+          const shorter = { ...this.accept(id, s.value, 'shorten'), note: note ?? undefined };
+          const again = await renderer.render(shorter, theme);
+          if (again.fit.fits) { content = shorter; result = again; }
+        } catch (err) {
+          if (!(err instanceof BadContent || err instanceof OutputCutOff)) throw err;
+          log.warn('shortened poster was unusable', { id, error: String(err) });
+        }
       }
       if (!result.fit.fits) {
         store.setStatus(id, 'failed', MSG_NO_FIT);
-        log.warn('poster would not fit', { id });
+        log.warn('poster would not fit even on the biggest sheet', { id, sheet: result.sheet.id, overflow: Number(result.fit.overflow.toFixed(2)) });
         return;
       }
 
       writePosterFiles(config.posterDir, id, theme.id, result);
-      store.setReady(id, content, note, provider.name);
+      store.setReady(id, content, note, provider.name, result.sheet.id);
       store.countPosterMade(this.now());
-      log.info('poster ready', { id, ms: Date.now() - started, scale: Number(result.fit.scale.toFixed(2)), fill: Number(result.fit.fill.toFixed(2)), day: dayOf(this.now()) });
+      log.info('poster ready', { id, ms: Date.now() - started, sheet: result.sheet.id, sections: content.sections.length, scale: Number(result.fit.scale.toFixed(2)), fill: Number(result.fit.fill.toFixed(2)), day: dayOf(this.now()) });
     } catch (err) {
       if (err instanceof CapReached) {
         store.setStatus(id, 'failed', MSG_FULL);

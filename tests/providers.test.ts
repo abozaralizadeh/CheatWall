@@ -5,7 +5,7 @@ import { AzureOpenAIProvider, chatUrl } from '../src/ai/azure.ts';
 import { createProvider } from '../src/ai/index.ts';
 import { FakeProvider } from '../src/ai/fake.ts';
 import { genericPoster, sqlPoster } from '../src/ai/fake-data.ts';
-import { ProviderRefusal } from '../src/ai/provider.ts';
+import { OutputCutOff, ProviderRefusal } from '../src/ai/provider.ts';
 import { costCents, loadConfig } from '../src/config.ts';
 import { parsePoster } from '../src/content.ts';
 
@@ -190,4 +190,20 @@ test('azure: config needs all three main values, BASE_PATH and TRUST_PROXY are p
   assert.deepEqual(loadConfig({ TRUST_PROXY: '127.0.0.1' }, process.cwd()).trustedProxies, ['127.0.0.1']);
   assert.equal(loadConfig({ TRUST_PROXY: 'false' }, process.cwd()).trustProxy, false);
   assert.equal(loadConfig({ TRUST_PROXY: 'true' }, process.cwd()).trustProxy, true);
+});
+
+test('azure: big posters get a 32k output limit by default, the retry carries the problems, a cut-off answer keeps its usage', async () => {
+  const m = azureFetch([chat(sqlPoster), chat('{"title":', 'length')]);
+  const p = new AzureOpenAIProvider({ main: MAIN, fallback: FALLBACK, fetch: m.fetch });
+  await p.writePoster('Python standard library', null, 'sections.3.columns: Too big');
+  assert.equal(m.calls[0]!.body.max_completion_tokens, 32000);
+  assert.match(m.calls[0]!.body.messages[1].content, /Fix these problems[\s\S]*sections\.3\.columns: Too big/);
+  const err = await p.writePoster('Python standard library', null).catch((e) => e);
+  assert.ok(err instanceof OutputCutOff);
+  assert.deepEqual(err.usage, { inputTokens: 120, outputTokens: 900 });
+  assert.equal(m.calls.length, 2, 'a cut-off answer is not sent to the fallback');
+  const small = azureFetch([chat(sqlPoster)]);
+  await new AzureOpenAIProvider({ main: MAIN, fetch: small.fetch, maxOutputTokens: 12000 }).writePoster('SQL', null);
+  assert.equal(small.calls[0]!.body.max_completion_tokens, 12000);
+  assert.equal(loadConfig({ AI_MAX_OUTPUT_TOKENS: '48000' }, process.cwd()).maxOutputTokens, 48000);
 });

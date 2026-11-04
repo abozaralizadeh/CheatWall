@@ -16,6 +16,7 @@ export interface PosterRow {
   message: string | null;
   visitor_hash: string;
   model: string | null;
+  sheet: string | null;
   input_tokens: number;
   output_tokens: number;
   cost_cents: number;
@@ -56,6 +57,8 @@ const MIGRATIONS = [
   // Daily token and AI call counts, for DAILY_TOKEN_BUDGET and DAILY_REQUEST_CAP.
   `ALTER TABLE daily_usage ADD COLUMN tokens INTEGER NOT NULL DEFAULT 0;
   ALTER TABLE daily_usage ADD COLUMN requests INTEGER NOT NULL DEFAULT 0;`,
+  // The sheet a poster was drawn on (it can grow past A2), so a theme switch redraws it at the same size.
+  `ALTER TABLE posters ADD COLUMN sheet TEXT;`,
 ];
 
 export class Store {
@@ -102,8 +105,8 @@ export class Store {
     this.db.prepare('UPDATE posters SET status = ?, message = ? WHERE id = ?').run(status, message, id);
   }
 
-  setReady(id: string, content: unknown, note: string | null, model: string): void {
-    this.db.prepare("UPDATE posters SET status = 'ready', content = ?, note = ?, message = NULL, model = ? WHERE id = ?").run(JSON.stringify(content), note, model, id);
+  setReady(id: string, content: unknown, note: string | null, model: string, sheet: string | null = null): void {
+    this.db.prepare("UPDATE posters SET status = 'ready', content = ?, note = ?, message = NULL, model = ?, sheet = ? WHERE id = ?").run(JSON.stringify(content), note, model, sheet, id);
   }
 
   setTheme(id: string, theme: string): void {

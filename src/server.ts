@@ -11,7 +11,7 @@ const config = loadConfig();
 const log = createLogger({ dir: config.logDir, maxBytes: config.logMaxBytes, keep: config.logKeep });
 const store = new Store(config.dbPath);
 const provider = createProvider(config);
-const renderer = new ChromiumRenderer({ chromePath: config.chromePath, concurrency: config.renderConcurrency, widthMm: config.posterWidthMm, heightMm: config.posterHeightMm, log });
+const renderer = new ChromiumRenderer({ chromePath: config.chromePath, concurrency: config.renderConcurrency, widthMm: config.posterWidthMm, heightMm: config.posterHeightMm, growSteps: config.posterGrowSteps, log });
 const app = createApp({ config, store, provider, renderer, log });
 
 if (!findChrome(config.chromePath)) log.warn('no Chrome or Chromium found, posters will fail until CHROME_PATH is set or setup_service.sh has run');

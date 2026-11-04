@@ -10,6 +10,7 @@ import { checkCanCreate, loadSecret, visitorHash } from './limits.ts';
 import type { Logger } from './log.ts';
 import { parsePoster } from './content.ts';
 import type { PosterRenderer } from './render/renderer.ts';
+import { findSheet, sheetLadder } from './render/sheets.ts';
 import { getTheme, THEMES } from './render/themes.ts';
 import { AI_NOTE } from './render/template.ts';
 import type { PosterRow, Status, Store } from './store.ts';
@@ -149,6 +150,8 @@ export function createApp(deps: AppDeps): App {
     return row.status === 'expired' || row.expires_at <= now().toISOString();
   }
 
+  const ladder = sheetLadder(config.posterWidthMm, config.posterHeightMm, config.posterGrowSteps);
+
   function shape(row: PosterRow) {
     const expired = isExpired(row);
     const status: Status = expired ? 'expired' : row.status;
@@ -171,6 +174,8 @@ export function createApp(deps: AppDeps): App {
       note: ready ? row.note : null,
       aiNote: AI_NOTE,
       expiresAt: row.expires_at,
+      // Print size, e.g. "A1" when a big topic grew past the normal A2.
+      size: ready ? (findSheet(ladder, row.sheet) ?? ladder[0]!).label : null,
       downloads: ready
         ? {
             pdf: href(`/api/posters/${row.id}/poster.pdf?theme=${row.theme}`),
@@ -217,7 +222,7 @@ export function createApp(deps: AppDeps): App {
         const job = (async () => {
           const parsed = parsePoster(JSON.parse(row.content!));
           if (!parsed.ok) throw new Error('stored poster is invalid');
-          const result = await renderer.render(parsed.value, theme);
+          const result = await renderer.render(parsed.value, theme, { sheet: row.sheet });
           writePosterFiles(config.posterDir, id, theme.id, result);
         })();
         themeLocks.set(`${id}:${theme.id}`, job);

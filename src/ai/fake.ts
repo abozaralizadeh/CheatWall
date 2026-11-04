@@ -1,5 +1,5 @@
 import type { Level, PosterContent } from '../content.ts';
-import { genericPoster, sampleFor } from './fake-data.ts';
+import { bigPoster, genericPoster, isBigTopic, sampleFor } from './fake-data.ts';
 import { ProviderRefusal, type Result, type TextProvider, type TopicCheck, type Usage } from './provider.ts';
 
 // Local stand-in for the AI. It makes no network calls and costs nothing.
@@ -41,13 +41,18 @@ export class FakeProvider implements TextProvider {
     return { value: { allowed: true, sensitive: hit ? hit[1] : null }, usage };
   }
 
-  async writePoster(topic: string, level: Level | null): Promise<Result<unknown>> {
+  // The problems the pipeline sent back on the last retry, for tests.
+  lastProblems: string | undefined;
+
+  async writePoster(topic: string, level: Level | null, problems?: string): Promise<Result<unknown>> {
     this.calls.write++;
+    this.lastProblems = problems;
     if (this.invalidFirst > 0) {
       this.invalidFirst--;
       return { value: { title: topic }, usage: { inputTokens: 600, outputTokens: 20 } };
     }
-    const content: PosterContent = structuredClone(sampleFor(topic) ?? genericPoster(topic, level));
+    // Big topics get a dense poster that breaks the limits the way real models do, so the repair step runs.
+    const content: unknown = isBigTopic(topic) ? bigPoster(topic, level) : structuredClone(sampleFor(topic) ?? genericPoster(topic, level));
     return { value: content, usage: { inputTokens: 600 + tokens(topic), outputTokens: tokens(content) } };
   }
 

@@ -2,8 +2,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import http from 'node:http';
 import { after, test } from 'node:test';
-import { genericPoster, orgChemPoster, sqlPoster } from '../src/ai/fake-data.ts';
-import type { PosterContent } from '../src/content.ts';
+import { bigPoster, genericPoster, orgChemPoster, sqlPoster } from '../src/ai/fake-data.ts';
+import { parsePoster, repairPoster, type PosterContent } from '../src/content.ts';
+import { azureFailingShape } from './fixtures/big-posters.ts';
 import { ChromiumRenderer, countPdfPages, findChrome } from '../src/render/chromium.ts';
 import { getTheme } from '../src/render/themes.ts';
 
@@ -11,7 +12,9 @@ import { getTheme } from '../src/render/themes.ts';
 const chrome = findChrome();
 const skip = chrome ? false : 'no Chrome or Chromium found';
 const renderer = new ChromiumRenderer({ chromePath: chrome ?? undefined, concurrency: 2, widthMm: 420, heightMm: 594 });
-after(async () => { await renderer.close(); });
+// The same renderer without the bigger sheets, for tests about fitting one fixed page.
+const fixed = new ChromiumRenderer({ chromePath: chrome ?? undefined, concurrency: 1, widthMm: 420, heightMm: 594, growSteps: 0 });
+after(async () => { await renderer.close(); await fixed.close(); });
 
 const paper = getTheme('paper')!;
 
@@ -62,13 +65,13 @@ test('very long content shrinks to fit, and impossible content is reported, neve
   for (const s of long.sections) {
     if (s.kind === 'points' || s.kind === 'steps') { while (s.items.length < 10) s.items.push('An extra line that makes this section longer than the others on the poster.'); }
   }
-  const r = await renderer.render(long, paper);
+  const r = await fixed.render(long, paper);
   assert.ok(r.fit.fits ? r.pages === 1 : r.fit.overflow > 1);
-  const small = await renderer.render(sqlPoster, paper);
+  const small = await fixed.render(sqlPoster, paper);
   assert.ok(r.fit.scale <= small.fit.scale + 0.01, 'more text means smaller or equal text');
 
   const huge: PosterContent = { title: 'Huge', subtitle: 'Far too much', sections: Array.from({ length: 12 }, (_, i) => ({ kind: 'points' as const, heading: `Section ${i}`, items: Array.from({ length: 10 }, () => 'x'.repeat(170)) })) };
-  const h = await renderer.render(huge, paper);
+  const h = await fixed.render(huge, paper);
   assert.equal(h.fit.fits, false);
   assert.ok(h.fit.overflow > 1.2, `overflow ${h.fit.overflow}`);
   assert.ok(h.fit.scale <= 0.61, 'tried the smallest size first');
@@ -92,7 +95,7 @@ test('normal and fairly short content fills the page, very thin content is still
   assert.ok(thin.fit.fill < 0.7, `thin fill ${thin.fit.fill}`);
 });
 
-test('wide tables never spill out of their card: text shrinks until they fit, or the poster is reported as not fitting', { skip }, async () => {
+test('wide tables never spill out of their card: text shrinks first, then long words may break', { skip }, async () => {
   // Regression: the four-column Spanish table used to run over the next column and still count as "fits".
   const { spanishPoster } = await import('../src/ai/fake-data.ts');
   const ok = await renderer.render(spanishPoster, paper);
@@ -105,8 +108,61 @@ test('wide tables never spill out of their card: text shrinks until they fit, or
       ...[1, 2, 3].map((i) => ({ kind: 'points' as const, heading: `P${i}`, items: ['one', 'two'] })),
     ],
   };
-  const bad = await renderer.render(wideTable, paper);
-  assert.equal(bad.fit.fits, false, 'a table that cannot fit inside its card is not reported as fitting');
+  const wrapped = await fixed.render(wideTable, paper);
+  assert.equal(wrapped.fit.fits, true, 'the table fits once long words may break');
+  assert.deepEqual(wrapped.fit.tableWrap, [true]);
+  assert.equal(wrapped.pages, 1);
+  assert.equal(ok.fit.tableWrap.some(Boolean), false, 'normal tables never break inside words');
+});
+
+const repaired = (raw: unknown): PosterContent => {
+  const p = parsePoster(repairPoster(raw).value);
+  if (!p.ok) throw new Error(p.error);
+  return p.value;
+};
+const mediaBox = (pdf: Buffer) => {
+  const m = /\/MediaBox\s*\[\s*0\s+0\s+([\d.]+)\s+([\d.]+)\s*\]/.exec(pdf.toString('latin1'))!;
+  return { wMm: (Number(m[1]) / 72) * 25.4, hMm: (Number(m[2]) / 72) * 25.4 };
+};
+
+test('the shape that failed live (6 columns, 120 character cells) grows to a bigger sheet and fits on one page', { skip }, async () => {
+  for (const over of [false, true]) {
+    const r = await renderer.render(repaired(azureFailingShape({ over })), paper);
+    assert.equal(r.fit.fits, true, `over=${over}`);
+    assert.equal(r.pages, 1);
+    assert.ok(r.sheet.widthMm > 420 || r.sheet.columns > 3, `grew from A2 3 columns, got ${r.sheet.id}`);
+    const box = mediaBox(r.pdf);
+    assert.ok(Math.abs(box.wMm - r.sheet.widthMm) < 1 && Math.abs(box.hMm - r.sheet.heightMm) < 1, `PDF is ${box.wMm} x ${box.hMm} mm`);
+  }
+});
+
+test('a whole-field topic ends up on A0, one page, readable text, PNG kept to a sane size', { skip }, async () => {
+  const r = await renderer.render(repaired(bigPoster('the whole Python standard library', null)), paper);
+  assert.equal(r.fit.fits, true);
+  assert.equal(r.pages, 1);
+  assert.equal(r.sheet.label, 'A0');
+  assert.ok(r.fit.scale >= r.sheet.minScale - 0.001, `scale ${r.fit.scale}`);
+  const { w, h } = pngSize(r.png);
+  assert.ok(w >= 2000 && w <= 2600, `PNG width ${w}`);
+  assert.ok(Math.abs(h / w - 1189 / 841) < 0.01);
+  // A theme switch redraws on the same sheet without searching again.
+  const again = await renderer.render(repaired(bigPoster('the whole Python standard library', null)), getTheme('midnight')!, { sheet: r.sheet.id });
+  assert.equal(again.sheet.id, r.sheet.id);
+  assert.equal(again.pages, 1);
+});
+
+test('a normal poster stays on A2 with 3 columns', { skip }, async () => {
+  const r = await renderer.render(sqlPoster, paper);
+  assert.equal(r.sheet.id, '420x594c3');
+  assert.equal(r.sheet.label, 'A2');
+});
+
+test('only content too big for the biggest sheet is reported as not fitting', { skip }, async () => {
+  const huge: PosterContent = { title: 'Huge', subtitle: 'Far too much', sections: Array.from({ length: 24 }, (_, i) => ({ kind: 'points' as const, heading: `Section ${i}`, items: Array.from({ length: 60 }, () => 'word '.repeat(44).trim()) })) };
+  const r = await renderer.render(huge, paper);
+  assert.equal(r.fit.fits, false);
+  assert.equal(r.sheet.id, renderer.ladder.at(-1)!.id, 'every sheet was tried');
+  assert.ok(r.fit.overflow > 1);
 });
 
 test('hostile content cannot make the renderer call out', { skip }, async () => {

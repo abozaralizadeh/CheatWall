@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createProvider } from '../src/ai/index.ts';
 import { costCents, loadConfig } from '../src/config.ts';
-import { parsePoster, slugify } from '../src/content.ts';
+import { parsePoster, repairPoster, slugify } from '../src/content.ts';
 import { loadEnvFile } from '../src/env.ts';
 import { ChromiumRenderer } from '../src/render/chromium.ts';
 import { getTheme } from '../src/render/themes.ts';
@@ -25,7 +25,7 @@ try {
     if (!check.value.allowed) { rows.push(`| ${topic} | refused | | | | | |`); continue; }
     const w = await provider.writePoster(topic, null);
     const r = await provider.reviewPoster(topic, null, w.value);
-    const parsed = parsePoster(r.value);
+    const parsed = parsePoster(repairPoster(r.value).value);
     if (!parsed.ok) { rows.push(`| ${topic} | invalid: ${parsed.error} | | | | | |`); continue; }
     const res = await renderer.render(parsed.value, theme);
     fs.writeFileSync(path.join(out, `${slugify(topic)}.pdf`), res.pdf);

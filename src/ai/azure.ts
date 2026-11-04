@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { AzureTarget } from '../config.ts';
 import type { Level } from '../content.ts';
 import { posterSchema } from '../content.ts';
-import { ProviderRefusal, type Result, type TextProvider, type TopicCheck, type Usage } from './provider.ts';
+import { OutputCutOff, ProviderRefusal, type Result, type TextProvider, type TopicCheck, type Usage } from './provider.ts';
 import { prompts, SYSTEM } from './prompts.ts';
 
 // Azure OpenAI chat completions with structured output. It tries the main deployment first and the fallback
@@ -37,6 +37,8 @@ export interface AzureOptions {
   apiVersion?: string;
   fetch?: FetchLike;
   timeoutMs?: number;
+  // Output limit for one poster call. Reasoning models count their thinking in it too.
+  maxOutputTokens?: number;
 }
 
 // Worth trying the fallback for these: the main deployment is busy, broken or not there.
@@ -54,6 +56,7 @@ export class AzureOpenAIProvider implements TextProvider {
   private apiVersion: string;
   private fetch: FetchLike;
   private timeoutMs: number;
+  private maxOut: number;
 
   constructor(opts: AzureOptions) {
     const fb = opts.fallback;
@@ -62,7 +65,8 @@ export class AzureOpenAIProvider implements TextProvider {
     this.targets = fallback ? [opts.main, fallback] : [opts.main];
     this.apiVersion = opts.apiVersion ?? '';
     this.fetch = opts.fetch ?? (globalThis.fetch as unknown as FetchLike);
-    this.timeoutMs = opts.timeoutMs ?? 240_000;
+    this.timeoutMs = opts.timeoutMs ?? 300_000;
+    this.maxOut = opts.maxOutputTokens ?? 32_000;
     this.name = `azure:${opts.main.deployment}`;
   }
 
@@ -103,7 +107,7 @@ export class AzureOpenAIProvider implements TextProvider {
     const usage: Usage = { inputTokens: data.usage?.prompt_tokens ?? 0, outputTokens: data.usage?.completion_tokens ?? 0 };
     const choice = data.choices?.[0];
     if (choice?.message?.refusal || choice?.finish_reason === 'content_filter') throw new ProviderRefusal();
-    if (choice?.finish_reason === 'length') throw new Error('The AI ran out of room before it finished the poster.');
+    if (choice?.finish_reason === 'length') throw new OutputCutOff(usage);
     const content = choice?.message?.content;
     if (!content) throw new Error('The AI sent an empty answer.');
     let value: unknown;
@@ -133,15 +137,15 @@ export class AzureOpenAIProvider implements TextProvider {
     };
   }
 
-  writePoster(topic: string, level: Level | null): Promise<Result<unknown>> {
-    return this.run(prompts.write(topic, level), 'poster', posterJsonSchema, 24000);
+  writePoster(topic: string, level: Level | null, problems?: string): Promise<Result<unknown>> {
+    return this.run(prompts.write(topic, level, problems), 'poster', posterJsonSchema, this.maxOut);
   }
 
   reviewPoster(topic: string, level: Level | null, content: unknown): Promise<Result<unknown>> {
-    return this.run(prompts.review(topic, level, content), 'poster', posterJsonSchema, 24000);
+    return this.run(prompts.review(topic, level, content), 'poster', posterJsonSchema, this.maxOut);
   }
 
   shortenPoster(topic: string, content: unknown, overflow: number): Promise<Result<unknown>> {
-    return this.run(prompts.shorten(topic, content, overflow), 'poster', posterJsonSchema, 24000);
+    return this.run(prompts.shorten(topic, content, overflow), 'poster', posterJsonSchema, this.maxOut);
   }
 }

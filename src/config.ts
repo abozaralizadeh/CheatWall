@@ -26,6 +26,8 @@ export interface Config {
   dailyCapCents: number;
   dailyTokenBudget: number;
   dailyRequestCap: number;
+  // Output limit for one poster call (write, review, shorten). The daily caps still apply on top.
+  maxOutputTokens: number;
   postersPerVisitorPerDay: number;
   attemptsPerVisitorPerDay: number;
   retentionDays: number;
@@ -35,6 +37,8 @@ export interface Config {
   defaultTheme: string;
   posterWidthMm: number;
   posterHeightMm: number;
+  // How many ISO sizes up a poster may grow when it does not fit: 2 lets an A2 become A1 or A0.
+  posterGrowSteps: number;
   chromePath: string;
   logMaxBytes: number;
   logKeep: number;
@@ -85,6 +89,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, root = process.
     dailyCapCents: num(env, 'DAILY_CAP_CENTS', 500),
     dailyTokenBudget: num(env, 'DAILY_TOKEN_BUDGET', 2_000_000),
     dailyRequestCap: num(env, 'DAILY_REQUEST_CAP', 300),
+    maxOutputTokens: num(env, 'AI_MAX_OUTPUT_TOKENS', 32_000),
     postersPerVisitorPerDay: num(env, 'POSTERS_PER_VISITOR_PER_DAY', 3),
     attemptsPerVisitorPerDay: num(env, 'ATTEMPTS_PER_VISITOR_PER_DAY', 15),
     retentionDays: num(env, 'RETENTION_DAYS', 30),
@@ -94,6 +99,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, root = process.
     defaultTheme: env.DEFAULT_THEME || 'paper',
     posterWidthMm: num(env, 'POSTER_WIDTH_MM', 420),
     posterHeightMm: num(env, 'POSTER_HEIGHT_MM', 594),
+    posterGrowSteps: Math.max(0, Math.min(3, Math.round(num(env, 'POSTER_GROW_STEPS', 2)))),
     chromePath: env.CHROME_PATH || '',
     logMaxBytes: num(env, 'LOG_MAX_BYTES', 10 * 1024 * 1024),
     logKeep: num(env, 'LOG_KEEP', 5),

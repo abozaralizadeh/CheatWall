@@ -51,7 +51,7 @@ function ready(p) {
         el(
           'div',
           { class: 'actions' },
-          el('a', { class: 'btn', href: p.downloads.pdf }, 'Download PDF (print size)'),
+          el('a', { class: 'btn', href: p.downloads.pdf }, `Download PDF (${p.size || 'print size'})`),
           el('a', { class: 'btn ghost', href: p.downloads.png + '&download=1' }, 'Download PNG'),
         ),
         p.note ? el('p', { class: 'notice' }, p.note) : '',

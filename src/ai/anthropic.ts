@@ -4,7 +4,7 @@ import { z } from 'zod';
 import type { Level } from '../content.ts';
 import { posterSchema } from '../content.ts';
 import { prompts, SYSTEM } from './prompts.ts';
-import { ProviderRefusal, type Result, type TextProvider, type TopicCheck, type Usage } from './provider.ts';
+import { OutputCutOff, ProviderRefusal, type Result, type TextProvider, type TopicCheck, type Usage } from './provider.ts';
 
 // The real provider. It has NEVER been run against the live API: the project has no key yet.
 // It is covered by tests that use a mocked client only. Try it with a real key before trusting it.
@@ -26,15 +26,18 @@ export interface AnthropicOptions {
   apiKey?: string;
   model: string;
   client?: ParseClient;
+  maxOutputTokens?: number;
 }
 
 export class AnthropicProvider implements TextProvider {
   readonly name: string;
   private client: ParseClient;
   private model: string;
+  private maxOut: number;
 
   constructor(opts: AnthropicOptions) {
     this.model = opts.model;
+    this.maxOut = opts.maxOutputTokens ?? 16_000;
     this.name = opts.model;
     this.client = opts.client ?? (new Anthropic({ apiKey: opts.apiKey }) as unknown as ParseClient);
   }
@@ -48,8 +51,9 @@ export class AnthropicProvider implements TextProvider {
       output_config: { format },
     });
     if (response.stop_reason === 'refusal') throw new ProviderRefusal();
-    if (response.stop_reason === 'max_tokens') throw new Error('The AI ran out of room before it finished the poster.');
-    return { value: response.parsed_output, usage: { inputTokens: response.usage.input_tokens, outputTokens: response.usage.output_tokens } };
+    const usage = { inputTokens: response.usage.input_tokens, outputTokens: response.usage.output_tokens };
+    if (response.stop_reason === 'max_tokens') throw new OutputCutOff(usage);
+    return { value: response.parsed_output, usage };
   }
 
   async checkTopic(topic: string, level: Level | null): Promise<Result<TopicCheck>> {
@@ -65,11 +69,11 @@ export class AnthropicProvider implements TextProvider {
     };
   }
 
-  writePoster(topic: string, level: Level | null): Promise<Result<unknown>> {
+  writePoster(topic: string, level: Level | null, problems?: string): Promise<Result<unknown>> {
     return this.run(
-      prompts.write(topic, level),
+      prompts.write(topic, level, problems),
       zodOutputFormat(posterSchema),
-      16000,
+      this.maxOut,
     );
   }
 
@@ -77,7 +81,7 @@ export class AnthropicProvider implements TextProvider {
     return this.run(
       prompts.review(topic, level, content),
       zodOutputFormat(posterSchema),
-      16000,
+      this.maxOut,
     );
   }
 
@@ -85,7 +89,7 @@ export class AnthropicProvider implements TextProvider {
     return this.run(
       prompts.shorten(topic, content, overflow),
       zodOutputFormat(posterSchema),
-      16000,
+      this.maxOut,
     );
   }
 }

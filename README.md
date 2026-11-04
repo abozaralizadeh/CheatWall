@@ -1,6 +1,6 @@
 # CheatWall
 
-CheatWall uses AI to make big, print-ready cheat sheet posters for any topic you study. You type a topic, and you get an A2 poster as a PDF and a PNG.
+CheatWall uses AI to make big, print-ready cheat sheet posters for any topic you study. You type a topic, and you get a poster as a PDF and a PNG. Most topics fit on A2. Big ones (a whole language, library or field) grow to A1 or A0.
 
 ![Demo: type a topic, get a poster, switch colours, download](docs/demo.gif)
 
@@ -55,7 +55,7 @@ npm run typecheck
 npm test
 ```
 
-88 tests, about 5 minutes, because some of them drive a real browser. `node scripts/prefix-check.ts` also makes a poster in a real browser with the site served under `/cheatwall/`, the way a shared nginx serves it.
+109 tests, about 5 minutes, because some of them drive a real browser. `node scripts/prefix-check.ts` also makes a poster in a real browser with the site served under `/cheatwall/`, the way a shared nginx serves it.
 
 ## Run it on a VM
 
@@ -86,7 +86,8 @@ Neither mode has been run on a real VM yet, so read the script before you use it
 | --- | --- |
 | Site, job queue, SQLite, limits, daily caps, expiry, logs | Real, tested |
 | Serving under a path like `/cheatwall/` | Real, tested, and checked in a real browser behind a local proxy |
-| Poster templates, fit to page, A2 PDF and PNG, three themes | Real, tested with a real Chrome |
+| Poster templates, fit to page, A2 PDF and PNG growing to A1 or A0 for big topics, three themes | Real, tested with a real Chrome |
+| Repairing AI answers that go over a limit (long cells, wide tables, long lists) | Real, tested with fixtures shaped like real failed answers |
 | Text provider | Fake by default (`PROVIDER=fake`) |
 | Azure OpenAI provider with fallback (`src/ai/azure.ts`) | Written, tested only against a mocked API |
 | Anthropic provider (`src/ai/anthropic.ts`) | Written, tested only against a mocked client |

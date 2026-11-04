@@ -22,7 +22,7 @@ test('schema rejects too few sections, empty text and long code', () => {
   assert.equal(parsePoster({ ...sqlPoster, title: '   ' }).ok, false);
   const long = structuredClone(sqlPoster);
   const c = long.sections.find((s) => s.kind === 'code')!;
-  if (c.kind === 'code') c.code = Array.from({ length: 20 }, (_, i) => `l${i}`).join('\n');
+  if (c.kind === 'code') c.code = Array.from({ length: 30 }, (_, i) => `l${i}`).join('\n');
   assert.equal(parsePoster(long).ok, false);
   assert.equal(parsePoster('not an object').ok, false);
   assert.equal(parsePoster(null).ok, false);

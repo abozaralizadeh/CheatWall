@@ -1,4 +1,5 @@
 import type { PosterContent } from '../content.ts';
+import type { Sheet } from './sheets.ts';
 import type { Theme } from './themes.ts';
 
 export interface FitResult {
@@ -11,6 +12,8 @@ export interface FitResult {
   overflow: number;
   // Text size per table in em, measured so each table stays inside its card.
   tableFonts: number[];
+  // Tables that were allowed to break inside long words.
+  tableWrap: boolean[];
 }
 
 export interface RenderResult {
@@ -18,9 +21,16 @@ export interface RenderResult {
   png: Buffer;
   fit: FitResult;
   pages: number;
+  // The sheet the poster ended up on.
+  sheet: Sheet;
+}
+
+export interface RenderOptions {
+  // Redraw on this sheet (by id) instead of searching for the smallest one that fits, e.g. for a theme switch.
+  sheet?: string | null;
 }
 
 export interface PosterRenderer {
-  render(content: PosterContent, theme: Theme): Promise<RenderResult>;
+  render(content: PosterContent, theme: Theme, opts?: RenderOptions): Promise<RenderResult>;
   close(): Promise<void>;
 }

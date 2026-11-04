@@ -4,7 +4,8 @@ import path from 'node:path';
 import { chromium, type Browser } from 'playwright-core';
 import type { PosterContent } from '../content.ts';
 import type { Logger } from '../log.ts';
-import type { FitResult, PosterRenderer, RenderResult } from './renderer.ts';
+import type { FitResult, PosterRenderer, RenderOptions, RenderResult } from './renderer.ts';
+import { findSheet, sheetLadder, type Sheet } from './sheets.ts';
 import { buildPosterHtml } from './template.ts';
 import type { Theme } from './themes.ts';
 
@@ -58,8 +59,10 @@ export interface ChromiumOptions {
   concurrency: number;
   widthMm: number;
   heightMm: number;
-  // PNG sharpness. 1.5 gives about 2400 px wide for A2. Samples use a small value for thumbnails.
+  // PNG sharpness. 1.5 gives about 2400 px wide, whatever the sheet. Samples use a small value for thumbnails.
   pngScale?: number;
+  // How many ISO sizes up a poster may grow (2 means A2 can become A1 or A0). 0 keeps it at the base size.
+  growSteps?: number;
   log?: Logger;
 }
 
@@ -71,9 +74,12 @@ export class ChromiumRenderer implements PosterRenderer {
   blockedRequests = 0;
 
   private opts: ChromiumOptions;
+  // Sizes to try, smallest first. The first one is the configured poster size.
+  readonly ladder: Sheet[];
 
   constructor(opts: ChromiumOptions) {
     this.opts = opts;
+    this.ladder = sheetLadder(opts.widthMm, opts.heightMm, opts.growSteps ?? 2);
     this.gate = new Semaphore(opts.concurrency);
   }
 
@@ -99,9 +105,9 @@ export class ChromiumRenderer implements PosterRenderer {
   }
 
   // Blocks every request that is not a data: URL. The poster page needs nothing from outside.
-  private async newLockedContext(browser: Browser, js: boolean, deviceScaleFactor: number) {
-    const wpx = Math.ceil(this.opts.widthMm * MM_TO_PX) + 2;
-    const hpx = Math.ceil(this.opts.heightMm * MM_TO_PX) + 2;
+  private async newLockedContext(browser: Browser, js: boolean, deviceScaleFactor: number, sheet: Sheet = this.ladder[0]!) {
+    const wpx = Math.ceil(sheet.widthMm * MM_TO_PX) + 2;
+    const hpx = Math.ceil(sheet.heightMm * MM_TO_PX) + 2;
     const ctx = await browser.newContext({ viewport: { width: wpx, height: hpx }, deviceScaleFactor, javaScriptEnabled: js, acceptDownloads: false });
     // Layer 2: offline mode. Layer 3: refuse every request that is not a data: URL. Layer 4: the page's own CSP.
     await ctx.setOffline(true);
@@ -114,47 +120,68 @@ export class ChromiumRenderer implements PosterRenderer {
     return ctx;
   }
 
-  async render(content: PosterContent, theme: Theme): Promise<RenderResult> {
+  // Tries each sheet on the ladder, smallest first, and keeps the first one where everything fits on one page.
+  // With opts.sheet it draws on that sheet only, so a theme switch keeps the size the poster was made at.
+  async render(content: PosterContent, theme: Theme, opts: RenderOptions = {}): Promise<RenderResult> {
     await this.gate.acquire();
     try {
       const browser = await this.getBrowser();
-      const { widthMm, heightMm } = this.opts;
-      const shrinks = [0.985, 0.955, 0.92, 0.88];
+      const pinned = findSheet(this.ladder, opts.sheet);
+      const sheets = pinned ? [pinned] : this.ladder;
       let last: RenderResult | null = null;
-      for (const shrink of shrinks) {
-        // Step 1: page with our own fit script, scripts allowed, network blocked. Measures and takes the PNG.
-        const a = await this.newLockedContext(browser, true, this.opts.pngScale ?? 1.5);
-        let fit: FitResult;
-        let png: Buffer;
-        try {
-          const page = await a.newPage();
-          await page.setContent(buildPosterHtml(content, { theme, widthMm, heightMm, mode: 'measure', shrink }), { waitUntil: 'load' });
-          await page.waitForFunction('window.__fit !== undefined', undefined, { timeout: 30_000 });
-          fit = (await page.evaluate('window.__fit')) as FitResult;
-          png = await page.locator('.poster').screenshot({ type: 'png' });
-        } finally {
-          await a.close();
-        }
-        // Step 2: the same poster with scripts switched off for good, saved as a vector PDF.
-        const b = await this.newLockedContext(browser, false, 1);
-        let pdf: Buffer;
-        try {
-          const page = await b.newPage();
-          await page.setContent(buildPosterHtml(content, { theme, widthMm, heightMm, mode: 'final', scale: fit.scale, gap: fit.gap, tableFonts: fit.tableFonts }), { waitUntil: 'load' });
-          await page.waitForTimeout(250);
-          pdf = await page.pdf({ width: `${widthMm}mm`, height: `${heightMm}mm`, printBackground: true, preferCSSPageSize: true });
-        } finally {
-          await b.close();
-        }
-        const pages = countPdfPages(pdf);
-        last = { pdf, png, fit, pages };
-        if (!fit.fits || pages === 1) break;
-        this.opts.log?.warn('poster spilled onto extra PDF pages, retrying a bit smaller', { pages, shrink });
+      for (let i = 0; i < sheets.length; i++) {
+        const sheet = sheets[i]!;
+        const r = await this.renderOn(browser, content, theme, sheet, i === sheets.length - 1);
+        if (r) last = r;
+        if (r && r.fit.fits && r.pages === 1) return r;
+        this.opts.log?.info('poster too big for this sheet, trying the next one', { sheet: sheet.id });
       }
       return last!;
     } finally {
       this.gate.release();
     }
+  }
+
+  // Measures on one sheet. Returns null when it does not fit and this is not the last sheet, so we skip the
+  // screenshot and the PDF for sizes we will not use.
+  private async renderOn(browser: Browser, content: PosterContent, theme: Theme, sheet: Sheet, lastSheet: boolean): Promise<RenderResult | null> {
+    const { widthMm, heightMm, columns, minScale } = sheet;
+    // Keep the PNG about the same number of pixels wide whatever the sheet, so an A0 PNG is not huge.
+    const pngScale = (this.opts.pngScale ?? 1.5) * (this.ladder[0]!.widthMm / widthMm);
+    const shrinks = [0.985, 0.955, 0.92, 0.88];
+    let last: RenderResult | null = null;
+    for (const shrink of shrinks) {
+      // Step 1: page with our own fit script, scripts allowed, network blocked. Measures and takes the PNG.
+      const a = await this.newLockedContext(browser, true, pngScale, sheet);
+      let fit: FitResult;
+      let png: Buffer;
+      try {
+        const page = await a.newPage();
+        await page.setContent(buildPosterHtml(content, { theme, widthMm, heightMm, columns, minScale, mode: 'measure', shrink }), { waitUntil: 'load' });
+        await page.waitForFunction('window.__fit !== undefined', undefined, { timeout: 30_000 });
+        fit = (await page.evaluate('window.__fit')) as FitResult;
+        if (!fit.fits && !lastSheet) return null;
+        png = await page.locator('.poster').screenshot({ type: 'png' });
+      } finally {
+        await a.close();
+      }
+      // Step 2: the same poster with scripts switched off for good, saved as a vector PDF.
+      const b = await this.newLockedContext(browser, false, 1, sheet);
+      let pdf: Buffer;
+      try {
+        const page = await b.newPage();
+        await page.setContent(buildPosterHtml(content, { theme, widthMm, heightMm, columns, mode: 'final', scale: fit.scale, gap: fit.gap, tableFonts: fit.tableFonts, tableWrap: fit.tableWrap }), { waitUntil: 'load' });
+        await page.waitForTimeout(250);
+        pdf = await page.pdf({ width: `${widthMm}mm`, height: `${heightMm}mm`, printBackground: true, preferCSSPageSize: true });
+      } finally {
+        await b.close();
+      }
+      const pages = countPdfPages(pdf);
+      last = { pdf, png, fit, pages, sheet };
+      if (!fit.fits || pages === 1) break;
+      this.opts.log?.warn('poster spilled onto extra PDF pages, retrying a bit smaller', { pages, shrink, sheet: sheet.id });
+    }
+    return last;
   }
 
   // For tests: load raw HTML in the same locked context the measure step uses (scripts on, network blocked)
